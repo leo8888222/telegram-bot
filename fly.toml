@@ -1,0 +1,8 @@
+app = "mmyechang-telegram-bot"
+primary_region = "sea"
+
+[build]
+  builder = "paketobuildpacks/builder:base"
+
+[processes]
+  worker = "python bot.py"
