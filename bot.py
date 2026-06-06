@@ -1,5 +1,6 @@
 import logging
 import os
+from openai import OpenAI
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import (
     Application,
@@ -10,202 +11,137 @@ from telegram.ext import (
     filters,
 )
 
-# Enable logging
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# Bot Token
 TOKEN = os.environ.get("BOT_TOKEN", "8865814143:AAHZdZhwGew4C2D_IgcpUhsN25jqYwVdLkg")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "sk-nDATqELoAhSqTiPaTHeDdx")
+OPENAI_API_BASE = os.environ.get("OPENAI_API_BASE", "https://api.manus.im/api/llm-proxy/v1")
 
-# FAQ Data
-FAQ_DATA = {
-    "product_intro": "We provide high-quality industrial components and consumer electronics. All products are CE/RoHS certified.",
-    "price": "Our pricing is competitive and depends on the order volume. Please use /inquiry to get a specific quote.",
-    "moq": "Minimum Order Quantity (MOQ) varies by product, generally starting from 100 units.",
-    "lead_time": "Standard lead time is 7-15 days for stock items and 30-45 days for OEM orders.",
-    "payment": "We accept T/T, L/C, Western Union, and Alibaba Trade Assurance."
-}
+client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_API_BASE)
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+SYSTEM_PROMPT = """You are Leo's intelligent foreign trade assistant. You work for Leo, a professional foreign trade businessman based in Jincheng, China.
+
+Your capabilities:
+- Answer any questions about foreign trade, products, shipping, payment methods, etc.
+- Communicate fluently in multiple languages (English, Chinese, Spanish, Arabic, etc.)
+- Help customers understand products, pricing, MOQ, lead times
+- Provide professional trade advice
+- Be friendly, helpful, and professional
+
+Key information about Leo's business:
+- Based in Jincheng, Shanxi, China
+- Specializes in high-quality Chinese manufactured products
+- Competitive pricing with flexible MOQ
+- Standard lead time: 7-15 days for stock, 30-45 days for OEM
+- Payment: T/T, L/C, Western Union, PayPal
+- Contact: Leo (WeChat: LeoTrade88)
+
+Always be helpful, professional, and try to convert inquiries into orders."""
+
+conversation_history = {}
+
+def get_ai_response(user_id, user_message):
+    try:
+        if user_id not in conversation_history:
+            conversation_history[user_id] = []
+        if len(conversation_history[user_id]) > 20:
+            conversation_history[user_id] = conversation_history[user_id][-20:]
+        conversation_history[user_id].append({"role": "user", "content": user_message})
+        response = client.chat.completions.create(
+            model="gpt-5-nano",
+            messages=[{"role": "system", "content": SYSTEM_PROMPT}, *conversation_history[user_id]],
+            max_tokens=1000,
+            temperature=0.7,
+        )
+        assistant_message = response.choices[0].message.content
+        conversation_history[user_id].append({"role": "assistant", "content": assistant_message})
+        return assistant_message
+    except Exception as e:
+        logger.error(f"AI API error: {e}")
+        return "Sorry, I'm having a temporary issue. Please try again or use /contact to reach Leo directly."
+
+async def start(update, context):
     user = update.effective_user
     welcome_text = (
         f"Hello {user.first_name}! 👋\n\n"
-        f"Welcome to Leo's Foreign Trade Service. I am your automated assistant.\n"
-        f"How can I help you today?\n\n"
-        "Available Commands:\n"
-        "/products - View our product catalog\n"
-        "/inquiry - Send a business inquiry\n"
-        "/contact - Get contact information\n"
-        "/faq - Common questions"
+        "Welcome to Leo's Foreign Trade Service. I am an AI-powered assistant.\n"
+        "You can ask me anything! I understand multiple languages.\n\n"
+        "/products - Product catalog\n"
+        "/inquiry - Send inquiry\n"
+        "/contact - Contact Leo\n"
+        "/clear - Clear chat history\n\n"
+        "Or just type your question!"
     )
-    
     keyboard = [
         [InlineKeyboardButton("📦 Products", callback_data="view_products")],
         [InlineKeyboardButton("📝 Send Inquiry", callback_data="start_inquiry")],
-        [InlineKeyboardButton("❓ FAQ", callback_data="view_faq")],
         [InlineKeyboardButton("📞 Contact Leo", callback_data="view_contact")]
     ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(welcome_text, reply_markup=reply_markup)
+    await update.message.reply_text(welcome_text, reply_markup=InlineKeyboardMarkup(keyboard))
 
-async def products(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    text = (
-        "📂 Product Catalog (Sample)\n\n"
-        "1. Model A-100: High-efficiency sensor\n"
-        "2. Model B-200: Industrial controller\n"
-        "3. Model C-300: Smart wireless module\n\n"
-        "Please select a category or contact us for the full PDF catalog."
-    )
-    keyboard = [
-        [InlineKeyboardButton("Request PDF Catalog", callback_data="req_catalog")],
-        [InlineKeyboardButton("Back to Menu", callback_data="main_menu")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    if update.message:
-        await update.message.reply_text(text, reply_markup=reply_markup)
-    else:
-        await update.callback_query.message.edit_text(text, reply_markup=reply_markup)
-
-async def contact(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    text = (
-        "👤 Contact Information\n\n"
-        "Manager: Leo\n"
-        "Email: leo@example.com\n"
-        "WhatsApp: +86 123 4567 8910\n"
-        "WeChat: LeoTrade88\n\n"
-        "Feel free to reach out for urgent matters!"
-    )
+async def products(update, context):
+    text = "📂 We offer many product categories. Just ask me about any specific product!"
     keyboard = [[InlineKeyboardButton("Back to Menu", callback_data="main_menu")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
     if update.message:
-        await update.message.reply_text(text, reply_markup=reply_markup)
+        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
     else:
-        await update.callback_query.message.edit_text(text, reply_markup=reply_markup)
+        await update.callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
 
-async def faq_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    text = "❓ Frequently Asked Questions\nSelect a topic to learn more:"
-    keyboard = [
-        [InlineKeyboardButton("Product Intro", callback_data="faq_product_intro")],
-        [InlineKeyboardButton("Pricing", callback_data="faq_price")],
-        [InlineKeyboardButton("MOQ", callback_data="faq_moq")],
-        [InlineKeyboardButton("Lead Time", callback_data="faq_lead_time")],
-        [InlineKeyboardButton("Payment Methods", callback_data="faq_payment")],
-        [InlineKeyboardButton("Back to Menu", callback_data="main_menu")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
+async def contact(update, context):
+    text = "👤 Contact:\nManager: Leo\nWeChat: LeoTrade88\nWhatsApp: +86 123 4567 8910"
+    keyboard = [[InlineKeyboardButton("Back to Menu", callback_data="main_menu")]]
     if update.message:
-        await update.message.reply_text(text, reply_markup=reply_markup)
+        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
     else:
-        await update.callback_query.message.edit_text(text, reply_markup=reply_markup)
+        await update.callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
 
-async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def clear_history(update, context):
+    user_id = update.effective_user.id
+    if user_id in conversation_history:
+        del conversation_history[user_id]
+    await update.message.reply_text("✅ History cleared!")
+
+async def handle_callback(update, context):
     query = update.callback_query
     await query.answer()
     data = query.data
-    
     if data == "view_products":
         await products(update, context)
-    elif data == "view_faq":
-        await faq_menu(update, context)
     elif data == "view_contact":
         await contact(update, context)
     elif data == "main_menu":
         keyboard = [
             [InlineKeyboardButton("📦 Products", callback_data="view_products")],
             [InlineKeyboardButton("📝 Send Inquiry", callback_data="start_inquiry")],
-            [InlineKeyboardButton("❓ FAQ", callback_data="view_faq")],
             [InlineKeyboardButton("📞 Contact Leo", callback_data="view_contact")]
         ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.message.edit_text("How can I help you today?", reply_markup=reply_markup)
-    elif data.startswith("faq_"):
-        key = data.replace("faq_", "")
-        faq_text = f"💡 {key.replace('_', ' ').title()}\n\n{FAQ_DATA.get(key, 'No information available.')}"
-        keyboard = [[InlineKeyboardButton("Back to FAQ", callback_data="view_faq")]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.message.edit_text(faq_text, reply_markup=reply_markup)
-    elif data == "req_catalog":
-        await query.message.reply_text("Our team will send the catalog to you shortly. Please make sure you've provided your contact info via /inquiry.")
+        await query.message.edit_text("How can I help you?", reply_markup=InlineKeyboardMarkup(keyboard))
     elif data == "start_inquiry":
-        await query.message.reply_text("Let's collect your inquiry details. What is your full name?", reply_markup=ReplyKeyboardRemove())
-        context.user_data["in_inquiry"] = True
-        context.user_data["inquiry_step"] = "name"
+        await query.message.reply_text("Tell me what products you need, quantity, and any requirements!")
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if context.user_data.get("in_inquiry"):
-        step = context.user_data.get("inquiry_step")
-        if step == "name":
-            context.user_data["name"] = update.message.text
-            context.user_data["inquiry_step"] = "country"
-            await update.message.reply_text(f"Nice to meet you, {update.message.text}! Which country are you from?")
-        elif step == "country":
-            context.user_data["country"] = update.message.text
-            context.user_data["inquiry_step"] = "product"
-            await update.message.reply_text("Which product are you interested in?")
-        elif step == "product":
-            context.user_data["product"] = update.message.text
-            context.user_data["inquiry_step"] = "quantity"
-            await update.message.reply_text("What is the estimated quantity you need?")
-        elif step == "quantity":
-            context.user_data["quantity"] = update.message.text
-            summary = (
-                "✅ Inquiry Received!\n\n"
-                f"Name: {context.user_data['name']}\n"
-                f"Country: {context.user_data['country']}\n"
-                f"Product: {context.user_data['product']}\n"
-                f"Quantity: {context.user_data['quantity']}\n\n"
-                "Leo will contact you shortly with a formal quote. Thank you!"
-            )
-            await update.message.reply_text(summary)
-            context.user_data["in_inquiry"] = False
-            context.user_data["inquiry_step"] = None
-            logger.info(f"New Inquiry: {context.user_data}")
-    else:
-        text = (
-            "Thank you for your message! 😊\n\n"
-            "I'm Leo's trade assistant. Here's what I can help with:\n"
-            "/products - View our catalog\n"
-            "/inquiry - Send an inquiry\n"
-            "/contact - Contact Leo directly\n"
-            "/faq - Common questions\n\n"
-            "Or just tap a button below:"
-        )
-        keyboard = [
-            [InlineKeyboardButton("📦 Products", callback_data="view_products")],
-            [InlineKeyboardButton("📝 Send Inquiry", callback_data="start_inquiry")],
-            [InlineKeyboardButton("📞 Contact Leo", callback_data="view_contact")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(text, reply_markup=reply_markup)
+async def handle_message(update, context):
+    user_id = update.effective_user.id
+    user_message = update.message.text
+    await update.message.chat.send_action("typing")
+    ai_response = get_ai_response(user_id, user_message)
+    await update.message.reply_text(ai_response)
 
-async def inquiry_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    context.user_data["in_inquiry"] = True
-    context.user_data["inquiry_step"] = "name"
-    await update.message.reply_text("Let's collect your inquiry details. What is your full name?")
+async def inquiry_command(update, context):
+    await update.message.reply_text("Tell me what you're looking for and I'll help!")
 
-def main() -> None:
+def main():
     application = Application.builder().token(TOKEN).build()
-
-    # Commands
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("products", products))
     application.add_handler(CommandHandler("contact", contact))
-    application.add_handler(CommandHandler("faq", faq_menu))
     application.add_handler(CommandHandler("inquiry", inquiry_command))
-    
-    # Callback Query Handler
+    application.add_handler(CommandHandler("clear", clear_history))
     application.add_handler(CallbackQueryHandler(handle_callback))
-    
-    # Message handler
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-
-    # Start the Bot
-    logger.info("Bot started successfully!")
+    logger.info("AI-powered bot started!")
     application.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
