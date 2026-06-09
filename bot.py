@@ -16,8 +16,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TOKEN = os.environ.get("BOT_TOKEN", "8865814143:AAHZdZhwGew4C2D_IgcpUhsN25jqYwVdLkg")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "sk-nDATqELoAhSqTiPaTHeDdx")
+TOKEN = os.environ["TOKEN"]
+OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 OPENAI_API_BASE = os.environ.get("OPENAI_API_BASE", "https://api.manus.im/api/llm-proxy/v1")
 
 client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_API_BASE)
