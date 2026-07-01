@@ -10,18 +10,14 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
-
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
-
-TOKEN = os.environ["TOKEN"]
-OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
+TOKEN = os.environ.get("TOKEN", "8865814143:AAGLAlitGSVH3MnkngGCisosPj9EHlEndIA")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "sk-nDATqELoAhSqTiPaTHeDdx")
 OPENAI_API_BASE = os.environ.get("OPENAI_API_BASE", "https://api.manus.im/api/llm-proxy/v1")
-
 client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_API_BASE)
-
 SYSTEM_PROMPT = """You are Leo's intelligent foreign trade assistant. You work for Leo, a professional foreign trade businessman based in Jincheng, China.
 
 Your capabilities:
@@ -40,9 +36,7 @@ Key information about Leo's business:
 - Contact: Leo (WeChat: LeoTrade88)
 
 Always be helpful, professional, and try to convert inquiries into orders."""
-
 conversation_history = {}
-
 def get_ai_response(user_id, user_message):
     try:
         if user_id not in conversation_history:
@@ -62,7 +56,6 @@ def get_ai_response(user_id, user_message):
     except Exception as e:
         logger.error(f"AI API error: {e}")
         return "Sorry, I'm having a temporary issue. Please try again or use /contact to reach Leo directly."
-
 async def start(update, context):
     user = update.effective_user
     welcome_text = (
@@ -81,7 +74,6 @@ async def start(update, context):
         [InlineKeyboardButton("📞 Contact Leo", callback_data="view_contact")]
     ]
     await update.message.reply_text(welcome_text, reply_markup=InlineKeyboardMarkup(keyboard))
-
 async def products(update, context):
     text = "📂 We offer many product categories. Just ask me about any specific product!"
     keyboard = [[InlineKeyboardButton("Back to Menu", callback_data="main_menu")]]
@@ -89,7 +81,6 @@ async def products(update, context):
         await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
     else:
         await update.callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
-
 async def contact(update, context):
     text = "👤 Contact:\nManager: Leo\nWeChat: LeoTrade88\nWhatsApp: +86 123 4567 8910"
     keyboard = [[InlineKeyboardButton("Back to Menu", callback_data="main_menu")]]
@@ -97,13 +88,11 @@ async def contact(update, context):
         await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
     else:
         await update.callback_query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
-
 async def clear_history(update, context):
     user_id = update.effective_user.id
     if user_id in conversation_history:
         del conversation_history[user_id]
     await update.message.reply_text("✅ History cleared!")
-
 async def handle_callback(update, context):
     query = update.callback_query
     await query.answer()
@@ -121,17 +110,14 @@ async def handle_callback(update, context):
         await query.message.edit_text("How can I help you?", reply_markup=InlineKeyboardMarkup(keyboard))
     elif data == "start_inquiry":
         await query.message.reply_text("Tell me what products you need, quantity, and any requirements!")
-
 async def handle_message(update, context):
     user_id = update.effective_user.id
     user_message = update.message.text
     await update.message.chat.send_action("typing")
     ai_response = get_ai_response(user_id, user_message)
     await update.message.reply_text(ai_response)
-
 async def inquiry_command(update, context):
     await update.message.reply_text("Tell me what you're looking for and I'll help!")
-
 def main():
     application = Application.builder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start))
@@ -143,6 +129,5 @@ def main():
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     logger.info("AI-powered bot started!")
     application.run_polling(drop_pending_updates=True)
-
 if __name__ == "__main__":
     main()
