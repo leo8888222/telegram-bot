@@ -1,3 +1,4 @@
+# Bot v3.0 - Universal AI Assistant
 import logging
 import os
 from openai import OpenAI
