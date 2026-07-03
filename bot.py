@@ -1,11 +1,10 @@
-# Bot v4.0 - Universal AI Assistant with conflict resolution
+# Bot v5.0 - Universal AI Assistant with fixed API calls
 import logging
 import os
 import sys
 import time
-import signal
-import httpx
-from openai import OpenAI
+import urllib.request
+import json
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -21,23 +20,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-TOKEN = os.environ.get("TOKEN", "8865814143:AAGLAlitGSVH3MnkngGCisosPj9EHlEndIA")
+TOKEN = "8865814143:AAGLAlitGSVH3MnkngGCisosPj9EHlEndIA"
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "sk-nDATqELoAhSqTiPaTHeDdx")
 OPENAI_API_BASE = os.environ.get("OPENAI_API_BASE", "https://api.manus.im/api/llm-proxy/v1")
 
-client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_API_BASE)
-
-# Force stop any other polling instance before we start
 def force_claim_bot():
-    """Delete webhook and use getUpdates with offset to force claim the bot"""
-    import urllib.request
-    import json
+    """Delete webhook and clear update queue to force claim polling rights"""
     base_url = f"https://api.telegram.org/bot{TOKEN}"
     try:
-        # Delete any webhook
         req = urllib.request.Request(f"{base_url}/deleteWebhook?drop_pending_updates=true")
         urllib.request.urlopen(req, timeout=10)
-        # Get latest update_id to clear the queue
         req = urllib.request.Request(f"{base_url}/getUpdates?limit=1&timeout=1")
         resp = urllib.request.urlopen(req, timeout=15)
         data = json.loads(resp.read())
@@ -74,24 +66,42 @@ SYSTEM_PROMPT = """你是一个超级智能AI助手，名叫Leo助手。你像�
 conversation_history = {}
 
 def get_ai_response(user_id, user_message):
+    """Call AI API with proper parameters"""
     try:
         if user_id not in conversation_history:
             conversation_history[user_id] = []
         if len(conversation_history[user_id]) > 20:
             conversation_history[user_id] = conversation_history[user_id][-20:]
         conversation_history[user_id].append({"role": "user", "content": user_message})
-        response = client.chat.completions.create(
-            model="gpt-5-nano",
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}, *conversation_history[user_id]],
-            max_tokens=2000,
-            temperature=0.7,
-        )
-        assistant_message = response.choices[0].message.content
+        
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}] + conversation_history[user_id]
+        
+        # Use urllib to call the API directly
+        url = f"{OPENAI_API_BASE}/chat/completions"
+        payload = json.dumps({
+            "model": "gpt-5-nano",
+            "messages": messages,
+            "max_completion_tokens": 2000,
+        }).encode("utf-8")
+        
+        req = urllib.request.Request(url, data=payload, headers={
+            "Authorization": f"Bearer {OPENAI_API_KEY}",
+            "Content-Type": "application/json",
+        })
+        
+        resp = urllib.request.urlopen(req, timeout=60)
+        data = json.loads(resp.read())
+        
+        assistant_message = data["choices"][0]["message"].get("content")
+        
+        if not assistant_message:
+            assistant_message = "抱歉，我没能生成回复，请再试一次。"
+        
         conversation_history[user_id].append({"role": "assistant", "content": assistant_message})
         return assistant_message
     except Exception as e:
         logger.error(f"AI API error: {e}")
-        return "抱歉，我暂时遇到了一点问题，请稍后再试。"
+        return f"抱歉，我暂时遇到了一点问题，请稍后再试。\n错误信息：{str(e)[:100]}"
 
 async def start(update, context):
     user = update.effective_user
@@ -167,7 +177,6 @@ async def handle_message(update, context):
         await update.message.reply_text(ai_response)
 
 def main():
-    # Force claim the bot before starting
     logger.info("Forcing claim of bot polling rights...")
     force_claim_bot()
     time.sleep(2)
@@ -180,7 +189,7 @@ def main():
     application.add_handler(CommandHandler("clear", clear_history))
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    logger.info("AI-powered bot started successfully!")
+    logger.info("AI-powered bot v5.0 started successfully!")
     application.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
