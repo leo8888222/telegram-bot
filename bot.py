@@ -1,6 +1,10 @@
-# Bot v3.0 - Universal AI Assistant
+# Bot v4.0 - Universal AI Assistant with conflict resolution
 import logging
 import os
+import sys
+import time
+import signal
+import httpx
 from openai import OpenAI
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -11,14 +15,40 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
+
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
 TOKEN = os.environ.get("TOKEN", "8865814143:AAGLAlitGSVH3MnkngGCisosPj9EHlEndIA")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "sk-nDATqELoAhSqTiPaTHeDdx")
 OPENAI_API_BASE = os.environ.get("OPENAI_API_BASE", "https://api.manus.im/api/llm-proxy/v1")
+
 client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_API_BASE)
+
+# Force stop any other polling instance before we start
+def force_claim_bot():
+    """Delete webhook and use getUpdates with offset to force claim the bot"""
+    import urllib.request
+    import json
+    base_url = f"https://api.telegram.org/bot{TOKEN}"
+    try:
+        # Delete any webhook
+        req = urllib.request.Request(f"{base_url}/deleteWebhook?drop_pending_updates=true")
+        urllib.request.urlopen(req, timeout=10)
+        # Get latest update_id to clear the queue
+        req = urllib.request.Request(f"{base_url}/getUpdates?limit=1&timeout=1")
+        resp = urllib.request.urlopen(req, timeout=15)
+        data = json.loads(resp.read())
+        if data.get("result"):
+            offset = data["result"][-1]["update_id"] + 1
+            req = urllib.request.Request(f"{base_url}/getUpdates?offset={offset}&limit=1&timeout=1")
+            urllib.request.urlopen(req, timeout=15)
+        logger.info("Successfully claimed bot polling rights")
+    except Exception as e:
+        logger.warning(f"Force claim attempt: {e}")
+
 SYSTEM_PROMPT = """你是一个超级智能AI助手，名叫Leo助手。你像一个全能的技术专家和生活顾问。
 
 你的能力包括但不限于：
@@ -137,13 +167,21 @@ async def handle_message(update, context):
         await update.message.reply_text(ai_response)
 
 def main():
+    # Force claim the bot before starting
+    logger.info("Forcing claim of bot polling rights...")
+    force_claim_bot()
+    time.sleep(2)
+    force_claim_bot()
+    time.sleep(3)
+    
     application = Application.builder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("clear", clear_history))
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    logger.info("AI-powered bot started!")
-    application.run_polling(drop_pending_updates=True)
+    logger.info("AI-powered bot started successfully!")
+    application.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
+
 if __name__ == "__main__":
     main()
