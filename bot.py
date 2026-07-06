@@ -1,4 +1,4 @@
-# Bot v5.0 - Universal AI Assistant with fixed API calls
+# Bot v6.0 - Universal AI Assistant with upgraded model
 import logging
 import os
 import sys
@@ -79,7 +79,7 @@ def get_ai_response(user_id, user_message):
         # Use urllib to call the API directly
         url = f"{OPENAI_API_BASE}/chat/completions"
         payload = json.dumps({
-            "model": "gpt-5-nano",
+            "model": "gpt-5-mini",
             "messages": messages,
             "max_completion_tokens": 2000,
         }).encode("utf-8")
@@ -189,7 +189,7 @@ def main():
     application.add_handler(CommandHandler("clear", clear_history))
     application.add_handler(CallbackQueryHandler(handle_callback))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    logger.info("AI-powered bot v5.0 started successfully!")
+    logger.info("AI-powered bot v6.0 started successfully!")
     application.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
