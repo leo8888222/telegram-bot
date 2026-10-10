@@ -6,3 +6,7 @@ primary_region = "sea"
 
 [processes]
   worker = "python bot.py"
+
+[[restart]]
+  policy = "always"
+  processes = ["worker"]
