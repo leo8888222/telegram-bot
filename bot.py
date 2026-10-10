@@ -153,9 +153,22 @@ async def get_ai_response(user_id: int, user_message: str) -> str:
                 messages=messages,
                 max_completion_tokens=2000,
             )
-            text = (resp.choices[0].message.content or "").strip()
+            # 防御性解析：某些代理返回 HTTP 200 但 choices 为空
+            # （通常是 Key 无效、余额不足或模型不可用）
+            choices = getattr(resp, "choices", None)
+            if not choices:
+                try:
+                    raw = resp.model_dump_json()[:800]
+                except Exception:
+                    raw = str(resp)[:800]
+                raise ValueError(
+                    "AI 接口返回 200 但 choices 为空 "
+                    "(可能 Key 无效/余额不足/模型不可用)。原始响应: " + raw
+                )
+            msg = choices[0].message if len(choices) > 0 else None
+            text = ((msg.content if msg else None) or "").strip()
             if not text:
-                text = "抱歉，我没能生成回复，请再试一次。"
+                raise ValueError("AI 返回了空内容")
             ustate["messages"].append({"role": "assistant", "content": text})
             if len(ustate["messages"]) > MAX_HISTORY:
                 ustate["messages"] = ustate["messages"][-MAX_HISTORY:]
