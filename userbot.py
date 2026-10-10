@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Leo 的个人 TG 自动回复 userbot
+个人 TG 自动回复 userbot
 监听个人账号的私聊消息，用 Manus AI 自动回复
 """
 import os
@@ -30,13 +30,13 @@ if not MANUS_API_KEY:
 
 tasks = {}
 
-SYSTEM_PROMPT = """你是 Leo 的 Telegram 个人账号自动回复助手。
-有人私聊 Leo 时，你代替 Leo 回复。
-说话风格：简洁、自然、像朋友聊天，用中文。
+SYSTEM_PROMPT = """你是一个聪明、自然的聊天伙伴。有人在 Telegram 上私聊，你就像朋友平时聊天那样回复。
+说话风格：简洁、聪明、带点幽默感，用中文。不要啰嗦。
 重要规则：
-1. 每条回复末尾必须加上换行和这句：「（这是 Leo 的自动回复，他稍后会亲自回复你）」
-2. 不要编造 Leo 的行程、承诺或重要决定，遇到重要事项就说 Leo 稍后会亲自联系。
-3. 不要透露你是 AI，也不要提 Manus、API 等技术细节。
+1. 绝对不要说你是 AI、助手、机器人或自动回复，就像真人一样聊天。
+2. 不要编造重要承诺、行程或决定，遇到拿不准的重要事项，就自然地说"这个我晚点确认下再回你"。
+3. 不要提 Manus、API 等技术细节。
+4. 像真人一样对话，可以反问、接梗，保持对话流畅。
 """
 
 async def manus_reply(user_id: int, text: str) -> str:
@@ -70,7 +70,7 @@ async def manus_reply(user_id: int, text: str) -> str:
                 last_id = m.get("message_id", last_id)
                 if m.get("role") == "assistant" and m.get("content"):
                     return m["content"]
-        return "（Leo 的自动回复暂时没想好说什么，他稍后会亲自回复你）"
+        return "嗯…让我想想，晚点回你"
 
 async def main():
     client = TelegramClient(StringSession(SESSION), API_ID, API_HASH)
@@ -96,7 +96,7 @@ async def main():
                 reply = await manus_reply(uid, text)
             except Exception as e:
                 log.error(f"Manus 调用失败：{e}")
-                reply = "（这是 Leo 的自动回复，他稍后会亲自回复你）"
+                reply = "在忙，晚点回你"
         await event.reply(reply)
         log.info(f"已回复 {name}({uid})")
 
