@@ -11,11 +11,15 @@ jobs:
           from telethon import TelegramClient
           from telethon.sessions import StringSession
           async def main():
+              c = TelegramClient(StringSession(), 35211107, 'f43fd35f97579cada9527771c38da759')
               try:
-                  async with TelegramClient(StringSession(), 35211107, 'f43fd35f97579cada9527771c38da759') as c:
-                      await c.send_code_request('+12546483258')
-                      print('MTPROTO_OK_CODE_SENT')
+                  await c.connect()
+                  print('MTPROTO_CONNECT_OK')
+                  await c.send_code_request('+12546483258')
+                  print('MTPROTO_OK_CODE_SENT')
               except Exception as e:
                   print(f'MTPROTO_FAIL: {type(e).__name__}: {str(e)[:200]}')
+              finally:
+                  await c.disconnect()
           asyncio.run(main())
           PYEOF
