@@ -4,6 +4,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      - run: pip install httpx -q
       - run: |
           python3 << 'PYEOF'
           import httpx, json, time
