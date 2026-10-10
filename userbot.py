@@ -18,7 +18,8 @@ API_ID = int(os.environ.get("TG_API_ID", "0"))
 API_HASH = os.environ.get("TG_API_HASH", "")
 SESSION = os.environ.get("TG_SESSION", "")
 MANUS_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-MANUS_BASE = os.environ.get("OPENAI_API_BASE", "https://api.manus.ai").rstrip("/")
+# 与主机器人保持一致：写死 Manus 官方地址，不从 Secret 读
+MANUS_BASE = "https://api.manus.ai"
 MODEL = "manus-1.6-lite"
 
 if not all([API_ID, API_HASH, SESSION]):
