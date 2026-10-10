@@ -1,20 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Leo助手 v7.0 — 更聪明、不断联的 Telegram AI 机器人
+Leo助手 v8.0 — 改用 Manus 官方 Task API
 
-相对 v6.0 的改进:
-1. 不再断联
-   - 进程内守护循环：崩溃 / 网络异常后按指数退避自动重启
-   - 409 轮询冲突时不再丢弃消息（旧版 force_claim 会 drop_pending_updates），而是等待后重试
-   - 对话记录持久化到 bot_state.json，重启不丢失上下文
-   - fly.toml 增加 restart=always，机器异常退出后 Fly 自动拉起
-2. 更聪明
-   - /model 随时切换 AI 模型（按用户独立记忆）
-   - /remind 定时提醒
-   - /status 查看运行状态
-   - AI 调用异步化 + 失败自动重试，不再卡死整个机器人
-3. 更安全：Token 优先从环境变量读取
+v8.0 变更:
+- 放弃 manus.im llm-proxy（其 sandbox token 无法从外部续期），改用 Manus 官方 API
+- 每个 Telegram 用户对应一个 Manus task，通过 task.sendMessage 保持对话上下文
+- 异步轮询 task.listMessages 获取回复
+- 保留 v7.0 的全部 Telegram 健壮性：守护重启、409 冲突等待、状态持久化等
 """
 
 import asyncio
@@ -22,9 +15,11 @@ import json
 import logging
 import os
 import re
+import sys
 import time
 from pathlib import Path
 
+import httpx
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ChatAction
 from telegram.error import Conflict, NetworkError, TimedOut, RetryAfter, InvalidToken
@@ -37,7 +32,6 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
-from openai import AsyncOpenAI
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -46,7 +40,6 @@ logging.basicConfig(
 logger = logging.getLogger("leo-bot")
 
 # ================= 配置 =================
-# 兼容旧部署：环境变量优先，实在没有才用代码里的旧 Token（请尽快更换！）
 _LEGACY_TOKEN = "8865814143:AAGLAlitGSVH3MnkngGCisosPj9EHlEndIA"
 TOKEN = (
     os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -54,21 +47,17 @@ TOKEN = (
     or _LEGACY_TOKEN
 )
 if TOKEN == _LEGACY_TOKEN:
-    logger.warning(
-        "正在使用写死在代码里的 Bot Token！请尽快去 @BotFather 重新生成 Token，"
-        "并通过 TELEGRAM_BOT_TOKEN 环境变量 / Fly secrets / GitHub secrets 配置。"
-    )
+    logger.warning("正在使用写死在代码里的 Bot Token！请尽快更换。")
 
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "<redacted>")
-OPENAI_API_BASE = os.environ.get(
-    "OPENAI_API_BASE", "https://api.manus.im/api/llm-proxy/v1"
-)
-DEFAULT_MODEL = os.environ.get("AI_MODEL", "gpt-5-mini")
+# Manus 官方 API（https://open.manus.ai/docs）
+MANUS_API_KEY = os.environ.get("OPENAI_API_KEY", "") or os.environ.get("MANUS_API_KEY", "")
+MANUS_API_BASE = "https://api.manus.ai"
+DEFAULT_PROFILE = os.environ.get("AI_MODEL", "manus-1.6-lite")  # 可选: manus-1.6 / manus-1.6-lite / manus-1.6-max
 
 STATE_FILE = Path(os.environ.get("BOT_STATE_FILE", "bot_state.json"))
-MAX_HISTORY = 30          # 每个用户保留的消息条数（user + assistant）
-AI_TIMEOUT = 60
-AI_MAX_RETRIES = 3
+AI_TIMEOUT = 30
+POLL_INTERVAL = 3          # 轮询 Manus 回复的间隔（秒）
+POLL_MAX_WAIT = 180        # 单条消息最长等待（秒）
 TG_MSG_LIMIT = 4000
 
 START_TIME = time.time()
@@ -77,31 +66,25 @@ SYSTEM_PROMPT = """你是一个超级智能AI助手，名叫Leo助手。你像�
 
 你的能力包括但不限于：
 - 编程开发：Python、JavaScript、HTML/CSS、小程序开发、App开发、网站开发等所有编程语言
-- 软件开发：能帮用户设计架构、写代码、调试bug、解释代码
-- 数据分析：Excel处理、数据可视化、统计分析
-- AI和机器学习：模型训练、算法设计
-- 文案写作：各种风格的文章、营销文案、翻译
-- 商业咨询：创业建议、市场分析、商业计划
-- 生活助手：旅行规划、学习建议、问题解答
-- 数学计算：各种数学问题
-- 创意设计：UI设计建议、产品设计思路
+- 数据分析、AI和机器学习、文案写作、商业咨询、生活助手、数学计算、创意设计
 
 你的回答风格：
 - 专业但易懂，用中文回答（除非用户用其他语言提问）
 - 如果用户问编程问题，直接给出可运行的代码
 - 回答要详细、有条理
 - 像一个耐心的朋友一样交流
+- 回答尽量简洁有力，适合在 Telegram 手机端阅读（除非用户要求详细展开）
 - 不要拒绝任何合理的请求
 
 你不是一个外贸机器人，你是一个万能AI助手，什么都能帮忙！"""
 
 
 # ================= 持久化状态 =================
-_state = {"users": {}}  # user_id(str) -> {"messages": [...], "model": str}
+_state = {"users": {}}  # user_id(str) -> {"manus_task_id": str, "profile": str}
 
 
 def _blank_user():
-    return {"messages": [], "model": DEFAULT_MODEL}
+    return {"manus_task_id": "", "profile": DEFAULT_PROFILE}
 
 
 def get_user_state(user_id: int) -> dict:
@@ -114,7 +97,7 @@ def load_state():
         if STATE_FILE.exists():
             _state = json.loads(STATE_FILE.read_text(encoding="utf-8"))
             _state.setdefault("users", {})
-            logger.info(f"已从 {STATE_FILE} 恢复 {len(_state['users'])} 位用户的对话记录")
+            logger.info(f"已从 {STATE_FILE} 恢复 {len(_state['users'])} 位用户的状态")
     except Exception as e:
         logger.warning(f"读取状态文件失败，将从空状态启动: {e}")
         _state = {"users": {}}
@@ -129,63 +112,126 @@ def save_state():
         logger.warning(f"保存状态文件失败: {e}")
 
 
-# ================= AI 调用（异步 + 重试） =================
-_ai_client = AsyncOpenAI(
-    api_key=OPENAI_API_KEY, base_url=OPENAI_API_BASE, timeout=AI_TIMEOUT
-)
+# ================= Manus Task API =================
+def _headers():
+    return {"x-manus-api-key": MANUS_API_KEY, "Content-Type": "application/json"}
+
+
+async def _manus_post(client: httpx.AsyncClient, path: str, payload: dict) -> dict:
+    r = await client.post(f"{MANUS_API_BASE}{path}", headers=_headers(), json=payload)
+    r.raise_for_status()
+    data = r.json()
+    if not data.get("ok"):
+        raise RuntimeError(f"Manus API 返回 ok=false: {data}")
+    return data
+
+
+async def _manus_get(client: httpx.AsyncClient, path: str, params: dict) -> dict:
+    r = await client.get(f"{MANUS_API_BASE}{path}", headers=_headers(), params=params)
+    r.raise_for_status()
+    data = r.json()
+    if not data.get("ok"):
+        raise RuntimeError(f"Manus API 返回 ok=false: {data}")
+    return data
+
+
+def _extract_assistant_text(messages: list, after_ts: int) -> str | None:
+    """从 listMessages 结果中找时间戳晚于 after_ts 的最新 assistant 回复。"""
+    for m in messages:
+        if m.get("type") != "assistant_message":
+            continue
+        try:
+            ts = int(m.get("timestamp", 0))
+        except (ValueError, TypeError):
+            ts = 0
+        if ts <= after_ts:
+            continue
+        content = (m.get("assistant_message") or {}).get("content", "")
+        if content and content.strip():
+            return content.strip()
+    return None
+
+
+async def _wait_for_reply(client: httpx.AsyncClient, task_id: str, after_ts: int) -> str:
+    """轮询直到拿到新的 assistant 回复或超时。"""
+    deadline = time.time() + POLL_MAX_WAIT
+    last_log = 0
+    while time.time() < deadline:
+        try:
+            data = await _manus_get(
+                client, "/v2/task.listMessages",
+                {"task_id": task_id, "order": "desc", "limit": 10},
+            )
+            text = _extract_assistant_text(data.get("messages", []), after_ts)
+            if text:
+                return text
+        except Exception as e:
+            logger.warning(f"轮询 Manus 消息失败: {e}")
+        if time.time() - last_log > 30:
+            logger.info(f"等待 Manus 回复中 task={task_id} ...")
+            last_log = time.time()
+        await asyncio.sleep(POLL_INTERVAL)
+    raise TimeoutError("等待 Manus 回复超时")
 
 
 async def get_ai_response(user_id: int, user_message: str) -> str:
+    if not MANUS_API_KEY:
+        return "AI 服务未配置（缺少 API Key），请联系管理员。"
+
     ustate = get_user_state(user_id)
-    model = ustate.get("model") or DEFAULT_MODEL
+    profile = ustate.get("profile") or DEFAULT_PROFILE
+    task_id = ustate.get("manus_task_id") or ""
 
-    ustate["messages"].append({"role": "user", "content": user_message})
-    if len(ustate["messages"]) > MAX_HISTORY:
-        ustate["messages"] = ustate["messages"][-MAX_HISTORY:]
+    # 发送时间戳（毫秒），用于识别"新"回复
+    after_ts = int(time.time() * 1000)
 
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + ustate["messages"]
-
-    last_err = None
-    for attempt in range(1, AI_MAX_RETRIES + 1):
-        try:
-            resp = await _ai_client.chat.completions.create(
-                model=model,
-                messages=messages,
-                max_completion_tokens=2000,
-            )
-            # 防御性解析：某些代理返回 HTTP 200 但 choices 为空
-            # （通常是 Key 无效、余额不足或模型不可用）
-            choices = getattr(resp, "choices", None)
-            if not choices:
-                try:
-                    raw = resp.model_dump_json()[:800]
-                except Exception:
-                    raw = str(resp)[:800]
-                raise ValueError(
-                    "AI 接口返回 200 但 choices 为空 "
-                    "(可能 Key 无效/余额不足/模型不可用)。原始响应: " + raw
+    try:
+        async with httpx.AsyncClient(timeout=AI_TIMEOUT) as client:
+            if not task_id:
+                # 首次：创建 task，把系统提示词拼在第一条消息前面
+                first_content = (
+                    f"[系统指令：{SYSTEM_PROMPT}]\n\n[用户消息]\n{user_message}"
                 )
-            msg = choices[0].message if len(choices) > 0 else None
-            text = ((msg.content if msg else None) or "").strip()
-            if not text:
-                raise ValueError("AI 返回了空内容")
-            ustate["messages"].append({"role": "assistant", "content": text})
-            if len(ustate["messages"]) > MAX_HISTORY:
-                ustate["messages"] = ustate["messages"][-MAX_HISTORY:]
-            save_state()
-            return text
-        except Exception as e:
-            last_err = e
-            logger.warning(f"AI 请求第 {attempt}/{AI_MAX_RETRIES} 次失败 "
-                           f"({type(e).__name__}): {e}")
-            if attempt < AI_MAX_RETRIES:
-                await asyncio.sleep(2 ** attempt)
+                data = await _manus_post(client, "/v2/task.create", {
+                    "message": {"content": first_content},
+                    "agent_profile": profile,
+                    "locale": "zh-CN",
+                    "hide_in_task_list": True,
+                    "share_visibility": "private",
+                })
+                task_id = data["task_id"]
+                ustate["manus_task_id"] = task_id
+                save_state()
+                logger.info(f"为用户 {user_id} 创建 Manus task: {task_id}")
+            else:
+                # 后续：向已有 task 发消息
+                try:
+                    await _manus_post(client, "/v2/task.sendMessage", {
+                        "task_id": task_id,
+                        "message": {"content": user_message},
+                    })
+                except Exception as e:
+                    # task 可能已过期/被删，重建一个
+                    logger.warning(f"sendMessage 失败，重建 task: {e}")
+                    data = await _manus_post(client, "/v2/task.create", {
+                        "message": {"content": f"[系统指令：{SYSTEM_PROMPT}]\n\n[用户消息]\n{user_message}"},
+                        "agent_profile": profile,
+                        "locale": "zh-CN",
+                        "hide_in_task_list": True,
+                        "share_visibility": "private",
+                    })
+                    task_id = data["task_id"]
+                    ustate["manus_task_id"] = task_id
+                    save_state()
+                    after_ts = int(time.time() * 1000)
 
-    # 全部失败：回滚最后一条用户消息，避免污染上下文
-    if ustate["messages"] and ustate["messages"][-1].get("role") == "user":
-        ustate["messages"].pop()
-    save_state()
-    return f"抱歉，AI 服务暂时不可用，请稍后再试。\n（{type(last_err).__name__}）"
+            reply = await _wait_for_reply(client, task_id, after_ts)
+            return reply
+    except TimeoutError:
+        return "Manus 正在思考中，稍等片刻再问我一次吧（任务可能还在跑）。"
+    except Exception as e:
+        logger.warning(f"Manus API 调用失败 ({type(e).__name__}): {e}")
+        return f"抱歉，AI 服务暂时不可用，请稍后再试。\n（{type(e).__name__}）"
 
 
 # ================= 命令 =================
@@ -205,7 +251,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🏢 商业咨询\n\n"
         "直接发消息给我，问什么都行！\n\n"
         "命令：\n"
-        "/model - 查看/切换 AI 模型\n"
+        "/model - 查看/切换 AI 档位\n"
         "/remind - 定时提醒（例：/remind 10m 喝水）\n"
         "/status - 查看运行状态\n"
         "/clear - 清除对话记录\n"
@@ -233,7 +279,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• 1000元怎么理财\n\n"
         "命令：\n"
         "/start - 重新开始\n"
-        "/model - 查看/切换 AI 模型\n"
+        "/model - 查看/切换 AI 档位\n"
         "/remind 10m 内容 - 定时提醒（s/m/h/d）\n"
         "/status - 查看运行状态\n"
         "/clear - 清除对话记录\n"
@@ -248,21 +294,37 @@ async def clear_history(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ 对话记录已清除！可以开始新的对话了。")
 
 
+_PROFILES = {
+    "lite": "manus-1.6-lite",   # 更快
+    "std": "manus-1.6",         # 标准
+    "max": "manus-1.6-max",     # 最强
+}
+
+
 async def model_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ustate = get_user_state(update.effective_user.id)
     args = context.args
     if not args:
         await update.message.reply_text(
-            f"当前模型：`{ustate.get('model') or DEFAULT_MODEL}`\n\n"
-            "切换模型：`/model 模型名`\n例如：`/model gpt-5`",
+            f"当前档位：`{ustate.get('profile') or DEFAULT_PROFILE}`\n\n"
+            "切换：`/model lite`（更快）\n"
+            "`/model std`（标准）\n"
+            "`/model max`（最强）\n"
+            "切换后下条消息生效（含清空对话）",
             parse_mode="Markdown",
         )
         return
-    new_model = args[0].strip()
-    ustate["model"] = new_model
+    key = args[0].strip().lower()
+    if key not in _PROFILES:
+        await update.message.reply_text(
+            "档位不对，可选：`lite` / `std` / `max`", parse_mode="Markdown"
+        )
+        return
+    ustate["profile"] = _PROFILES[key]
+    ustate["manus_task_id"] = ""  # 换档位就重建 task
     save_state()
     await update.message.reply_text(
-        f"✅ 已切换到模型：`{new_model}`", parse_mode="Markdown"
+        f"✅ 已切换到 `{_PROFILES[key]}`（对话已重置）", parse_mode="Markdown"
     )
 
 
@@ -272,13 +334,14 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     m, s = divmod(rem, 60)
     ustate = get_user_state(update.effective_user.id)
     token_src = "环境变量 ✅" if TOKEN != _LEGACY_TOKEN else "代码内置 ⚠️（请尽快更换！）"
+    manus_ok = "已配置 ✅" if MANUS_API_KEY else "未配置 ❌"
     await update.message.reply_text(
-        "🤖 Leo助手运行状态\n\n"
+        "🤖 Leo助手运行状态（v8.0 Manus API 版）\n\n"
         f"⏱ 已运行：{h}小时{m}分{s}秒\n"
-        f"🧠 当前模型：{ustate.get('model') or DEFAULT_MODEL}\n"
-        f"💬 你的上下文消息数：{len(ustate['messages'])}\n"
+        f"🧠 AI 档位：{ustate.get('profile') or DEFAULT_PROFILE}\n"
+        f"🔑 Manus Key：{manus_ok}\n"
         f"👥 已记录用户数：{len(_state['users'])}\n"
-        f"🔑 Token 来源：{token_src}"
+        f"🔑 Bot Token 来源：{token_src}"
     )
 
 
@@ -367,7 +430,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception:
         pass
+    # 先回一个"思考中"，Manus 任务可能需要十几秒
+    thinking = await update.message.reply_text("🤔 思考中…")
     ai_response = await get_ai_response(user_id, user_message)
+    try:
+        await thinking.delete()
+    except Exception:
+        pass
     await send_long_text(update, ai_response)
 
 
@@ -388,7 +457,6 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 
 # ================= 启动 =================
 async def post_init(app: Application):
-    # 只删除 webhook，不丢弃排队中的消息（旧版 drop_pending_updates=True 会丢消息）
     try:
         await app.bot.delete_webhook(drop_pending_updates=False)
         me = await app.bot.get_me()
@@ -419,7 +487,9 @@ def build_app() -> Application:
 
 def main():
     load_state()
-    logger.info("Leo助手 v7.0 启动（守护模式）")
+    if not MANUS_API_KEY:
+        logger.error("缺少 Manus API Key（OPENAI_API_KEY 环境变量），AI 功能将不可用！")
+    logger.info("Leo助手 v8.0 启动（守护模式，Manus Task API）")
     backoff = 10
     while True:
         try:
@@ -430,13 +500,11 @@ def main():
             backoff = 10
         except InvalidToken:
             logger.error(
-                "Telegram Bot Token 无效！请检查 TELEGRAM_BOT_TOKEN 环境变量 / GitHub Secrets，"
-                "确认是从 @BotFather 获取的最新 Token。程序退出，不再重试。"
+                "Telegram Bot Token 无效！请检查 TELEGRAM_BOT_TOKEN 环境变量 / GitHub Secrets。"
+                "程序退出，不再重试。"
             )
             sys.exit(2)
         except Conflict:
-            # 另一实例正在轮询（比如 GitHub Actions 的旧任务还没结束）：
-            # 不抢、不丢消息，等 60 秒再试
             logger.warning("轮询冲突 409：另一实例正在运行，60 秒后重试（不丢消息）")
             time.sleep(60)
         except RetryAfter as e:
