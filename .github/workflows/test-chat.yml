@@ -1,0 +1,27 @@
+name: Test Manus Chat API
+on: workflow_dispatch
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          python3 << 'PYEOF'
+          import httpx, json, time
+          key = "${{ secrets.OPENAI_API_KEY }}"
+          tests = [
+              ("https://api.manus.ai/v1/chat/completions", {"API_KEY": key}),
+              ("https://api.manus.ai/v1/chat/completions", {"Authorization": f"Bearer {key}"}),
+          ]
+          for url, headers in tests:
+              headers["Content-Type"] = "application/json"
+              try:
+                  t0 = time.time()
+                  r = httpx.post(url, headers=headers, json={
+                      "model": "manus-1.6-lite",
+                      "messages": [{"role": "user", "content": "说'你好'"}]
+                  }, timeout=30)
+                  dt = time.time() - t0
+                  print(f"URL={url} AUTH={list(headers.keys())[0]} STATUS={r.status_code} TIME={dt:.1f}s BODY={r.text[:200]}")
+              except Exception as e:
+                  print(f"URL={url} ERROR={type(e).__name__}: {str(e)[:150]}")
+          PYEOF
