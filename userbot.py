@@ -7,6 +7,7 @@ import os
 import sys
 import asyncio
 import logging
+import time
 import httpx
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
@@ -18,7 +19,6 @@ API_ID = int(os.environ.get("TG_API_ID", "0"))
 API_HASH = os.environ.get("TG_API_HASH", "")
 SESSION = os.environ.get("TG_SESSION", "")
 MANUS_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-# 与主机器人保持一致：写死 Manus 官方地址，不从 Secret 读
 MANUS_BASE = "https://api.manus.ai"
 MODEL = "manus-1.6-lite"
 
@@ -40,37 +40,71 @@ SYSTEM_PROMPT = """你是一个聪明、自然的聊天伙伴。有人在 Telegr
 4. 像真人一样对话，可以反问、接梗，保持对话流畅。
 """
 
+def _headers():
+    return {"API_KEY": MANUS_API_KEY, "Content-Type": "application/json"}
+
+async def _manus_post(client, path, payload):
+    r = await client.post(f"{MANUS_BASE}{path}", headers=_headers(), json=payload)
+    r.raise_for_status()
+    return r.json()
+
+async def _manus_get(client, path, params):
+    r = await client.get(f"{MANUS_BASE}{path}", headers=_headers(), params=params)
+    r.raise_for_status()
+    return r.json()
+
+def _extract_reply(messages, after_ts):
+    for m in messages:
+        if m.get("type") != "assistant_message":
+            continue
+        try:
+            ts = int(m.get("timestamp", 0))
+        except (ValueError, TypeError):
+            ts = 0
+        if ts <= after_ts:
+            continue
+        content = m.get("content") or ""
+        if isinstance(content, dict):
+            content = content.get("text") or str(content)
+        if content.strip():
+            return content.strip(), ts
+    return None, after_ts
+
 async def manus_reply(user_id: int, text: str) -> str:
-    headers = {"API_KEY": MANUS_API_KEY, "Content-Type": "application/json"}
-    async with httpx.AsyncClient(timeout=120) as cli:
+    async with httpx.AsyncClient(timeout=120) as client:
         task_id = tasks.get(user_id)
+        now_ts = int(time.time() * 1000)
         if not task_id:
-            r = await cli.post(f"{MANUS_BASE}/v2/task.create", headers=headers, json={
-                "prompt": SYSTEM_PROMPT,
-                "agentProfile": MODEL,
+            first_content = f"[系统指令：{SYSTEM_PROMPT}]\n\n[用户消息]\n{text}"
+            data = await _manus_post(client, "/v2/task.create", {
+                "message": {"content": first_content},
+                "agent_profile": MODEL,
+                "locale": "zh-CN",
+                "hide_in_task_list": True,
+                "share_visibility": "private",
             })
-            r.raise_for_status()
-            task_id = r.json()["task_id"]
+            task_id = data["task_id"]
             tasks[user_id] = task_id
-            log.info(f"为用户 {user_id} 创建 Manus task {task_id}")
-        r = await cli.post(f"{MANUS_BASE}/v2/task.sendMessage", headers=headers, json={
-            "task_id": task_id,
-            "content": text,
-        })
-        r.raise_for_status()
-        last_id = None
+            log.info(f"为用户 {user_id} 创建 Manus task: {task_id}")
+            after_ts = now_ts
+        else:
+            await _manus_post(client, "/v2/task.sendMessage", {
+                "task_id": task_id,
+                "message": {"content": text},
+            })
+            after_ts = now_ts
+
+        # 轮询回复
         for _ in range(40):
             await asyncio.sleep(3)
-            r = await cli.post(f"{MANUS_BASE}/v2/task.listMessages", headers=headers, json={
-                "task_id": task_id,
-                "last_message_id": last_id,
-            })
-            r.raise_for_status()
-            msgs = r.json().get("messages", [])
-            for m in msgs:
-                last_id = m.get("message_id", last_id)
-                if m.get("role") == "assistant" and m.get("content"):
-                    return m["content"]
+            try:
+                data = await _manus_get(client, "/v2/task.listMessages",
+                    {"task_id": task_id, "order": "desc", "limit": 10})
+                reply, after_ts = _extract_reply(data.get("messages", []), after_ts)
+                if reply:
+                    return reply
+            except Exception as e:
+                log.warning(f"轮询 Manus 消息失败: {e}")
         return "嗯…让我想想，晚点回你"
 
 async def main():
