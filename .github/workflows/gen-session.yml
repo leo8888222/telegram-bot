@@ -6,6 +6,10 @@ on:
         description: 'Telegram 验证码（先空着运行一次触发发送）'
         required: false
         default: ''
+      phone_code_hash:
+        description: '第一次运行输出的 code hash'
+        required: false
+        default: ''
       password_2fa:
         description: '两步验证密码'
         required: false
@@ -20,26 +24,24 @@ jobs:
           import asyncio
           from telethon import TelegramClient
           from telethon.sessions import StringSession
+          from telethon.errors import SessionPasswordNeededError
           API_ID = 35211107
           API_HASH = 'f43fd35f97579cada9527771c38da759'
           PHONE = '+12546483258'
           CODE = '${{ github.event.inputs.phone_code }}'
+          CODE_HASH = '${{ github.event.inputs.phone_code_hash }}'
           PWD2FA = '${{ github.event.inputs.password_2fa }}'
           async def main():
               c = TelegramClient(StringSession(), API_ID, API_HASH)
               await c.connect()
               if not CODE:
-                  await c.send_code_request(PHONE)
-                  print('SESSION_GEN: CODE_SENT_CHECK_TG_APP')
+                  r = await c.send_code_request(PHONE)
+                  print(f'SESSION_GEN: CODE_SENT hash={r.phone_code_hash}')
               else:
                   try:
-                      await c.sign_in(PHONE, CODE)
-                  except Exception as e:
-                      if 'password' in str(type(e).__name__).lower() or '2fa' in str(e).lower() or 'SessionPasswordNeeded' in str(type(e).__name__):
-                          print('SESSION_GEN: NEED_2FA')
-                          await c.sign_in(password=PWD2FA)
-                      else:
-                          raise
+                      await c.sign_in(PHONE, CODE, phone_code_hash=CODE_HASH)
+                  except SessionPasswordNeededError:
+                      await c.sign_in(password=PWD2FA)
                   s = c.session.save()
                   print(f'SESSION_GEN_OK:{s}')
               await c.disconnect()
