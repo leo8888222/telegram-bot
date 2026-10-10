@@ -2,7 +2,21 @@
 # -*- coding: utf-8 -*-
 """
 Leo助手 v7.0 — 更聪明、不断联的 Telegram AI 机器人
+
+相对 v6.0 的改进:
+1. 不再断联
+   - 进程内守护循环：崩溃 / 网络异常后按指数退避自动重启
+   - 409 轮询冲突时不再丢弃消息（旧版 force_claim 会 drop_pending_updates），而是等待后重试
+   - 对话记录持久化到 bot_state.json，重启不丢失上下文
+   - fly.toml 增加 restart=always，机器异常退出后 Fly 自动拉起
+2. 更聪明
+   - /model 随时切换 AI 模型（按用户独立记忆）
+   - /remind 定时提醒
+   - /status 查看运行状态
+   - AI 调用异步化 + 失败自动重试，不再卡死整个机器人
+3. 更安全：Token 优先从环境变量读取
 """
+
 import asyncio
 import json
 import logging
@@ -13,7 +27,7 @@ from pathlib import Path
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ChatAction
-from telegram.error import Conflict, NetworkError, TimedOut, RetryAfter
+from telegram.error import Conflict, NetworkError, TimedOut, RetryAfter, InvalidToken
 from telegram.ext import (
     Application,
     ApplicationBuilder,
@@ -31,6 +45,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("leo-bot")
 
+# ================= 配置 =================
+# 兼容旧部署：环境变量优先，实在没有才用代码里的旧 Token（请尽快更换！）
 _LEGACY_TOKEN = "8865814143:AAGLAlitGSVH3MnkngGCisosPj9EHlEndIA"
 TOKEN = (
     os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -38,7 +54,10 @@ TOKEN = (
     or _LEGACY_TOKEN
 )
 if TOKEN == _LEGACY_TOKEN:
-    logger.warning("正在使用写死在代码里的 Bot Token！请尽快更换。")
+    logger.warning(
+        "正在使用写死在代码里的 Bot Token！请尽快去 @BotFather 重新生成 Token，"
+        "并通过 TELEGRAM_BOT_TOKEN 环境变量 / Fly secrets / GitHub secrets 配置。"
+    )
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "<redacted>")
 OPENAI_API_BASE = os.environ.get(
@@ -47,7 +66,7 @@ OPENAI_API_BASE = os.environ.get(
 DEFAULT_MODEL = os.environ.get("AI_MODEL", "gpt-5-mini")
 
 STATE_FILE = Path(os.environ.get("BOT_STATE_FILE", "bot_state.json"))
-MAX_HISTORY = 30
+MAX_HISTORY = 30          # 每个用户保留的消息条数（user + assistant）
 AI_TIMEOUT = 60
 AI_MAX_RETRIES = 3
 TG_MSG_LIMIT = 4000
@@ -76,7 +95,9 @@ SYSTEM_PROMPT = """你是一个超级智能AI助手，名叫Leo助手。你像�
 
 你不是一个外贸机器人，你是一个万能AI助手，什么都能帮忙！"""
 
-_state = {"users": {}}
+
+# ================= 持久化状态 =================
+_state = {"users": {}}  # user_id(str) -> {"messages": [...], "model": str}
 
 
 def _blank_user():
@@ -108,6 +129,7 @@ def save_state():
         logger.warning(f"保存状态文件失败: {e}")
 
 
+# ================= AI 调用（异步 + 重试） =================
 _ai_client = AsyncOpenAI(
     api_key=OPENAI_API_KEY, base_url=OPENAI_API_BASE, timeout=AI_TIMEOUT
 )
@@ -146,12 +168,14 @@ async def get_ai_response(user_id: int, user_message: str) -> str:
             if attempt < AI_MAX_RETRIES:
                 await asyncio.sleep(2 ** attempt)
 
+    # 全部失败：回滚最后一条用户消息，避免污染上下文
     if ustate["messages"] and ustate["messages"][-1].get("role") == "user":
         ustate["messages"].pop()
     save_state()
     return f"抱歉，AI 服务暂时不可用，请稍后再试。\n（{type(last_err).__name__}）"
 
 
+# ================= 命令 =================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     welcome_text = (
@@ -301,7 +325,9 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
 
+# ================= 消息处理 =================
 async def send_long_text(update: Update, text: str):
+    """按 Telegram 4096 字符限制分段发送，尽量按换行切分。"""
     if len(text) <= TG_MSG_LIMIT:
         await update.message.reply_text(text)
         return
@@ -347,7 +373,9 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
         pass
 
 
+# ================= 启动 =================
 async def post_init(app: Application):
+    # 只删除 webhook，不丢弃排队中的消息（旧版 drop_pending_updates=True 会丢消息）
     try:
         await app.bot.delete_webhook(drop_pending_updates=False)
         me = await app.bot.get_me()
@@ -387,7 +415,15 @@ def main():
             logger.warning("run_polling 意外退出，10 秒后重启")
             time.sleep(10)
             backoff = 10
+        except InvalidToken:
+            logger.error(
+                "Telegram Bot Token 无效！请检查 TELEGRAM_BOT_TOKEN 环境变量 / GitHub Secrets，"
+                "确认是从 @BotFather 获取的最新 Token。程序退出，不再重试。"
+            )
+            sys.exit(2)
         except Conflict:
+            # 另一实例正在轮询（比如 GitHub Actions 的旧任务还没结束）：
+            # 不抢、不丢消息，等 60 秒再试
             logger.warning("轮询冲突 409：另一实例正在运行，60 秒后重试（不丢消息）")
             time.sleep(60)
         except RetryAfter as e:
