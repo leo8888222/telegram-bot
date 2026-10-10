@@ -40,14 +40,12 @@ logging.basicConfig(
 logger = logging.getLogger("leo-bot")
 
 # ================= 配置 =================
-_LEGACY_TOKEN = "8865814143:AAGLAlitGSVH3MnkngGCisosPj9EHlEndIA"
-TOKEN = (
-    os.environ.get("TELEGRAM_BOT_TOKEN")
-    or os.environ.get("BOT_TOKEN")
-    or _LEGACY_TOKEN
-)
-if TOKEN == _LEGACY_TOKEN:
-    logger.warning("正在使用写死在代码里的 Bot Token！请尽快更换。")
+# Bot Token 必须通过环境变量提供（GitHub Secrets / Fly secrets），代码中不再硬编码
+TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("BOT_TOKEN") or ""
+if not TOKEN:
+    raise SystemExit(
+        "缺少 Telegram Bot Token！请设置 TELEGRAM_BOT_TOKEN 环境变量。"
+    )
 
 # Manus 官方 API（https://open.manus.ai/docs）
 MANUS_API_KEY = os.environ.get("OPENAI_API_KEY", "") or os.environ.get("MANUS_API_KEY", "")
@@ -333,7 +331,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     h, rem = divmod(uptime, 3600)
     m, s = divmod(rem, 60)
     ustate = get_user_state(update.effective_user.id)
-    token_src = "环境变量 ✅" if TOKEN != _LEGACY_TOKEN else "代码内置 ⚠️（请尽快更换！）"
+    token_src = "环境变量 ✅"
     manus_ok = "已配置 ✅" if MANUS_API_KEY else "未配置 ❌"
     await update.message.reply_text(
         "🤖 Leo助手运行状态（v8.0 Manus API 版）\n\n"
