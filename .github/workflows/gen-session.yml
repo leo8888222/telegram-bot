@@ -1,0 +1,47 @@
+name: Generate Telethon Session
+on:
+  workflow_dispatch:
+    inputs:
+      phone_code:
+        description: 'Telegram 验证码（先空着运行一次触发发送）'
+        required: false
+        default: ''
+      password_2fa:
+        description: '两步验证密码'
+        required: false
+        default: ''
+jobs:
+  gen:
+    runs-on: ubuntu-latest
+    steps:
+      - run: pip install telethon
+      - run: |
+          python3 << 'PYEOF'
+          import asyncio
+          from telethon import TelegramClient
+          from telethon.sessions import StringSession
+          API_ID = 35211107
+          API_HASH = 'f43fd35f97579cada9527771c38da759'
+          PHONE = '+12546483258'
+          CODE = '${{ github.event.inputs.phone_code }}'
+          PWD2FA = '${{ github.event.inputs.password_2fa }}'
+          async def main():
+              c = TelegramClient(StringSession(), API_ID, API_HASH)
+              await c.connect()
+              if not CODE:
+                  await c.send_code_request(PHONE)
+                  print('SESSION_GEN: CODE_SENT_CHECK_TG_APP')
+              else:
+                  try:
+                      await c.sign_in(PHONE, CODE)
+                  except Exception as e:
+                      if 'password' in str(type(e).__name__).lower() or '2fa' in str(e).lower() or 'SessionPasswordNeeded' in str(type(e).__name__):
+                          print('SESSION_GEN: NEED_2FA')
+                          await c.sign_in(password=PWD2FA)
+                      else:
+                          raise
+                  s = c.session.save()
+                  print(f'SESSION_GEN_OK:{s}')
+              await c.disconnect()
+          asyncio.run(main())
+          PYEOF
