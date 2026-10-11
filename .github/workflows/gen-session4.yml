@@ -8,6 +8,9 @@ on:
       code:
         description: '验证码（signin 时用）'
         required: false
+      send_run_id:
+        description: 'send 步骤的 run id（signin 时用）'
+        required: false
 jobs:
   gen:
     runs-on: ubuntu-latest
@@ -21,6 +24,8 @@ jobs:
         if: inputs.step == 'signin'
         with:
           name: code-hash
+          run-id: ${{ inputs.send_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Send code
         if: inputs.step == 'send'
         env:
