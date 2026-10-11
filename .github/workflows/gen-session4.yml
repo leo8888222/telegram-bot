@@ -17,6 +17,10 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install telethon -q
+      - uses: actions/download-artifact@v4
+        if: inputs.step == 'signin'
+        with:
+          name: code-hash
       - name: Send code
         if: inputs.step == 'send'
         env:
@@ -66,7 +70,3 @@ jobs:
               await c.disconnect()
           asyncio.run(main())
           EOF
-      - uses: actions/download-artifact@v4
-        if: inputs.step == 'signin'
-        with:
-          name: code-hash
