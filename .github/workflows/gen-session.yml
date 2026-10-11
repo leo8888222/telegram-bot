@@ -44,6 +44,9 @@ jobs:
         with:
           script: |
             const issue_number = 1;
+            // 只接受本运行开始后发表的评论，避免抓到旧验证码
+            const run_started = new Date("${{ github.event.repository.updated_at }}").getTime() || Date.now();
+            const since = new Date(Date.now() - 2 * 60 * 1000).toISOString();
             console.log("请在 Issue #1 评论区回复验证码，格式：CODE 12345");
             console.log("等待 10 分钟…");
             const deadline = Date.now() + 10 * 60 * 1000;
@@ -52,8 +55,11 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number,
+                since,
               });
               for (let i = comments.length - 1; i >= 0; i--) {
+                // 跳过运行开始前已存在的评论
+                if (new Date(comments[i].created_at).getTime() < Date.now() - 11 * 60 * 1000) continue;
                 const m = comments[i].body.match(/CODE\s+(\d{5})/i);
                 if (m) {
                   console.log("收到验证码");
@@ -61,7 +67,7 @@ jobs:
                   return;
                 }
               }
-              await new Promise(r => setTimeout(r, 15000));
+              await new Promise(r => setTimeout(r, 5000));
             }
             core.setFailed("超时：未在 Issue #1 收到验证码");
       - name: Complete sign-in and print session
