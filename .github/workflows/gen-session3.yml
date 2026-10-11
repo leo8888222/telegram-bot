@@ -1,0 +1,48 @@
+name: Generate TG Session v3
+on:
+  workflow_dispatch:
+    inputs:
+      code:
+        description: 'Telegram 验证码（用户直接提供）'
+        required: true
+jobs:
+  gen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install telethon -q
+      - name: Sign in with provided code
+        env:
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+        run: |
+          python - <<'EOF'
+          import os, asyncio
+          from telethon import TelegramClient
+          from telethon.sessions import StringSession
+          async def main():
+              c = TelegramClient(StringSession(), int(os.environ["TG_API_ID"]), os.environ["TG_API_HASH"])
+              await c.connect()
+              phone = "+12546483258"
+              code = "${{ inputs.code }}"
+              # 先尝试直接登录（复用已发送的验证码）
+              try:
+                  await c.sign_in(phone, code)
+                  print("直接登录成功")
+              except Exception as e:
+                  msg = str(e)
+                  print(f"直接登录失败: {msg[:100]}")
+                  # 需要 hash，重新请求（TG 可能返回相同 hash）
+                  sent = await c.send_code_request(phone)
+                  await c.sign_in(phone, code, phone_code_hash=sent.phone_code_hash)
+                  print("重请求后登录成功")
+              s = c.session.save()
+              print("SESSION_STRING_START")
+              print(s)
+              print("SESSION_STRING_END")
+              await c.disconnect()
+          asyncio.run(main())
+          EOF
