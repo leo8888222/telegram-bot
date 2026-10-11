@@ -9,33 +9,26 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install telethon qrcode -q
+      - run: pip install telethon -q
       - name: QR Login
         env:
           TG_API_ID: ${{ secrets.TG_API_ID }}
           TG_API_HASH: ${{ secrets.TG_API_HASH }}
         run: |
           python - <<'EOF'
-          import asyncio, qrcode, io, base64
+          import asyncio, os
           from telethon import TelegramClient
           from telethon.sessions import StringSession
 
           async def main():
-              c = TelegramClient(StringSession(), int(__import__('os').environ["TG_API_ID"]), __import__('os').environ["TG_API_HASH"])
+              c = TelegramClient(StringSession(), int(os.environ["TG_API_ID"]), os.environ["TG_API_HASH"])
               await c.connect()
               print("等待扫码...", flush=True)
-              # Telethon 的 QR 登录
               qr = await c.qr_login()
-              # 生成二维码图片并输出为 base64
-              img = qrcode.make(qr.url)
-              buf = io.BytesIO()
-              img.save(buf, format='PNG')
-              b64 = base64.b64encode(buf.getvalue()).decode()
-              print("QR_CODE_START", flush=True)
-              print(b64, flush=True)
-              print("QR_CODE_END", flush=True)
-              print(f"或直接访问: {qr.url}", flush=True)
-              # 等待用户扫码
+              print("QR_URL_START", flush=True)
+              print(qr.url, flush=True)
+              print("QR_URL_END", flush=True)
+              print("请用 Telegram 手机 App 扫码或点击上面的链接", flush=True)
               await qr.wait(timeout=300)
               print("扫码成功！", flush=True)
               s = c.session.save()
