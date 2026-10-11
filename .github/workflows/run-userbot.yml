@@ -5,6 +5,11 @@ on:
   schedule:
     - cron: "0 */4 * * *"
 
+# 防止多实例同时运行导致 session 冲突
+concurrency:
+  group: userbot-singleton
+  cancel-in-progress: false
+
 jobs:
   run-userbot:
     runs-on: ubuntu-latest

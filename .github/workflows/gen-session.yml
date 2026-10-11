@@ -1,0 +1,101 @@
+name: Generate TG Session
+
+on:
+  workflow_dispatch:
+    inputs:
+      phone:
+        description: 'Telegram 手机号（带国家码，如 +86xxx）'
+        required: true
+
+jobs:
+  gen-session:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install telethon
+      - name: Send login code
+        env:
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+        run: |
+          python - <<'EOF'
+          import os, asyncio, json
+          from telethon import TelegramClient
+          from telethon.sessions import StringSession
+
+          async def main():
+              client = TelegramClient(StringSession(), int(os.environ["TG_API_ID"]), os.environ["TG_API_HASH"])
+              await client.connect()
+              phone = "${{ inputs.phone }}"
+              sent = await client.send_code_request(phone)
+              print(f"CODE_SENT phone_code_hash={sent.phone_code_hash}")
+              # 保存 phone_code_hash 供下一步使用
+              with open("/tmp/code_hash.txt", "w") as f:
+                  f.write(sent.phone_code_hash)
+
+          asyncio.run(main())
+          EOF
+      - name: Wait for code via issue comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue_number = 1;
+            console.log("请在 Issue #1 评论区回复验证码，格式：CODE 12345");
+            console.log("等待 10 分钟…");
+            const deadline = Date.now() + 10 * 60 * 1000;
+            while (Date.now() < deadline) {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number,
+              });
+              for (let i = comments.length - 1; i >= 0; i--) {
+                const m = comments[i].body.match(/CODE\s+(\d{5})/i);
+                if (m) {
+                  console.log("收到验证码");
+                  core.exportVariable("TG_CODE", m[1]);
+                  return;
+                }
+              }
+              await new Promise(r => setTimeout(r, 15000));
+            }
+            core.setFailed("超时：未在 Issue #1 收到验证码");
+      - name: Complete sign-in and print session
+        env:
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+        run: |
+          python - <<'EOF'
+          import os, asyncio
+          from telethon import TelegramClient
+          from telethon.sessions import StringSession
+
+          async def main():
+              client = TelegramClient(StringSession(), int(os.environ["TG_API_ID"]), os.environ["TG_API_HASH"])
+              await client.connect()
+              phone = "${{ inputs.phone }}"
+              with open("/tmp/code_hash.txt") as f:
+                  phone_code_hash = f.read().strip()
+              code = os.environ["TG_CODE"]
+              try:
+                  await client.sign_in(phone, code, phone_code_hash=phone_code_hash)
+              except Exception as e:
+                  if "2FA" in str(e) or "password" in str(e).lower():
+                      print("需要两步验证密码，请联系管理员手动处理")
+                      raise
+                  raise
+              session_str = client.session.save()
+              print("=" * 60)
+              print("SESSION_STRING_START")
+              print(session_str)
+              print("SESSION_STRING_END")
+              print("=" * 60)
+              print("请复制上面的 session 字符串，更新到 GitHub Secret TG_SESSION")
+              await client.disconnect()
+
+          asyncio.run(main())
+          EOF
