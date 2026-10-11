@@ -1,0 +1,72 @@
+name: Generate TG Session v4
+on:
+  workflow_dispatch:
+    inputs:
+      step:
+        description: 'send 或 signin'
+        required: true
+      code:
+        description: '验证码（signin 时用）'
+        required: false
+jobs:
+  gen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install telethon -q
+      - name: Send code
+        if: inputs.step == 'send'
+        env:
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+        run: |
+          python - <<'EOF'
+          import os, asyncio
+          from telethon import TelegramClient
+          from telethon.sessions import StringSession
+          async def main():
+              c = TelegramClient(StringSession(), int(os.environ["TG_API_ID"]), os.environ["TG_API_HASH"])
+              await c.connect()
+              sent = await c.send_code_request("+12546483258")
+              with open("phone_code_hash.txt", "w") as f:
+                  f.write(sent.phone_code_hash)
+              print("验证码已发送，请查收")
+              await c.disconnect()
+          asyncio.run(main())
+          EOF
+      - uses: actions/upload-artifact@v4
+        if: inputs.step == 'send'
+        with:
+          name: code-hash
+          path: phone_code_hash.txt
+          retention-days: 1
+      - name: Sign in
+        if: inputs.step == 'signin'
+        env:
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+        run: |
+          python - <<'EOF'
+          import os, asyncio
+          from telethon import TelegramClient
+          from telethon.sessions import StringSession
+          async def main():
+              c = TelegramClient(StringSession(), int(os.environ["TG_API_ID"]), os.environ["TG_API_HASH"])
+              await c.connect()
+              with open("phone_code_hash.txt") as f:
+                  h = f.read().strip()
+              await c.sign_in("+12546483258", "${{ inputs.code }}", phone_code_hash=h)
+              s = c.session.save()
+              print("SESSION_STRING_START")
+              print(s)
+              print("SESSION_STRING_END")
+              await c.disconnect()
+          asyncio.run(main())
+          EOF
+      - uses: actions/download-artifact@v4
+        if: inputs.step == 'signin'
+        with:
+          name: code-hash
