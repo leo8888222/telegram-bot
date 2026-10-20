@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-每天自动往「外贸人家」频道推送科技 + 外贸新闻。
+每天自动往「外贸人家」频道推送科技 + 政策 + 外贸新闻。
 
 用法（GitHub Actions 定时触发）：
     TELEGRAM_BOT_TOKEN=xxx CHANNEL=@freenodes_daily python3 post_tech_news.py
 
-新闻来源：公开 RSS（科技：36kr/IT之家/少数派；外贸：雨果网/亿邦动力）。
+新闻来源：公开 RSS（科技：36kr/IT之家/少数派；政策：中新网要闻按外贸关键词过滤；
+外贸：WTO 官方）。
 仅依赖 Python 标准库。
 """
 
@@ -34,12 +35,22 @@ TECH_FEEDS = [
     ("少数派", "https://sspai.com/feed"),
 ]
 
+# 政策源：中新网要闻导读（综合新闻，按外贸/政策关键词过滤出相关条目）
+POLICY_FEEDS = [
+    ("中新网", "https://www.chinanews.com.cn/rss/importnews.xml"),
+]
+POLICY_KEYWORDS = [
+    "外贸", "出口", "进口", "贸易", "关税", "跨境", "海关", "商务部",
+    "退税", "RCEP", "广交会", "汇率", "外资", "自贸", "一带一路",
+]
+
 # 外贸资讯源（WTO 官方，英文但最权威）
 TRADE_FEEDS = [
     ("WTO", "http://www.wto.org/library/rss/latest_news_e.xml"),
 ]
 
 MAX_ITEMS_PER_SECTION = 5
+MAX_POLICY_ITEMS = 4
 HTTP_TIMEOUT = 20
 UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"}
 
@@ -50,7 +61,7 @@ def http_get(url: str) -> bytes:
         return resp.read()
 
 
-def fetch_feed(name: str, url: str) -> list:
+def fetch_feed(name: str, url: str, limit: int = 4) -> list:
     """抓一个 RSS，返回 [{title, link, src}]。"""
     items = []
     try:
@@ -61,7 +72,7 @@ def fetch_feed(name: str, url: str) -> list:
             link = (entry.findtext("link") or "").strip()
             if title and link:
                 items.append({"title": title, "link": link, "src": name})
-            if len(items) >= 4:
+            if len(items) >= limit:
                 break
         if not items:  # atom
             ns = "{http://www.w3.org/2005/Atom}"
@@ -72,19 +83,45 @@ def fetch_feed(name: str, url: str) -> list:
                 link = l.get("href", "") if l is not None else ""
                 if title and link:
                     items.append({"title": title, "link": link, "src": name})
-                if len(items) >= 4:
+                if len(items) >= limit:
                     break
     except Exception as e:
         logger.warning("RSS 抓取失败 %s (%s): %s", name, url, e)
     return items
 
 
-def build_message(tech_items: list, trade_items: list, tip: str) -> str:
+def fetch_policy_items() -> list:
+    """抓政策源，按关键词过滤出外贸相关条目。"""
+    picked = []
+    seen = set()
+    for name, url in POLICY_FEEDS:
+        # 政策源多抓一些再过滤
+        for it in fetch_feed(name, url, limit=30):
+            if it["title"] in seen:
+                continue
+            if any(k in it["title"] for k in POLICY_KEYWORDS):
+                picked.append(it)
+                seen.add(it["title"])
+            if len(picked) >= MAX_POLICY_ITEMS:
+                break
+        if len(picked) >= MAX_POLICY_ITEMS:
+            break
+    return picked
+
+
+def build_message(tech_items: list, policy_items: list, trade_items: list, tip: str) -> str:
     date_str = time.strftime("%m月%d日", time.localtime())
     lines = ["📰 <b>每日资讯 · %s</b>" % date_str, ""]
     if tech_items:
         lines.append("🔬 <b>科技</b>")
         for i, it in enumerate(tech_items[:MAX_ITEMS_PER_SECTION], 1):
+            title = html.escape(it["title"][:60])
+            src = html.escape(it["src"])
+            lines.append('%d. <a href="%s">%s</a> <i>(%s)</i>' % (i, it["link"], title, src))
+        lines.append("")
+    if policy_items:
+        lines.append("📜 <b>政策</b>")
+        for i, it in enumerate(policy_items[:MAX_POLICY_ITEMS], 1):
             title = html.escape(it["title"][:60])
             src = html.escape(it["src"])
             lines.append('%d. <a href="%s">%s</a> <i>(%s)</i>' % (i, it["link"], title, src))
@@ -104,15 +141,22 @@ def build_message(tech_items: list, trade_items: list, tip: str) -> str:
     return "\n".join(lines)
 
 
-# 每日轮换的外贸干货（SOHO / FB投流 / INS / TK获客）
+# 每日轮换的外贸干货（新手起步 / FB投流 / TK运营 / INS / 收款 / 找客户 / 开发信）
 DAILY_TIPS = [
-    "🏠 <b>SOHO做外贸起步</b>：先定1-2个主打产品深耕，别贪多。注册香港公司+离岸账户收款，用WhatsApp Business养号，前3个月每天加10个精准客户，坚持比技巧重要。",
-    "📣 <b>FB投流入门</b>：新户先跑互动广告养像素7天，日预算$5起测素材。CTR低于1%直接换素材，别死磕。受众先宽后窄，转化稳定后再叠加兴趣词。",
-    "📸 <b>INS获客</b>：主页Bio写清你是做什么+WhatsApp直达链接。每天1条Reels展示产品使用场景，标签混用大标签+精准长尾标签，主动评论同行粉丝是最快的冷启动。",
-    "🎵 <b>TK获客</b>：TikTok Shop+短视频双管齐下。前3秒必须出产品卖点，挂小黄车转化。直播每天固定时段开，哪怕只有几个人也要坚持，算法给坚持的人流量。",
-    "💰 <b>SOHO收款</b>：小额用PayPal/Wise，大额走离岸公司TT。警惕尼日利亚等高风险地区订单，首单务必全款或至少50%定金发货。",
-    "🔍 <b>找客户渠道</b>：海关数据+Google Maps+LinkedIn组合拳。海关数据找进口商，Google Maps按区域扫街式开发，LinkedIn加采购负责人，三管齐下不愁没客户。",
-    "✉️ <b>开发信技巧</b>：标题别写Dear Sir，要写具体产品+利益点如'Reduce your sourcing cost 15% - LED strips'。正文3段以内，附件只放1页PDF，第一封不报价只求回复。",
+    "🌱 <b>新手起步① · 先选对赛道</b>：新手别一上来铺十几个产品。先选1-2个类目深耕，优先选体积小、单价$10-50、复购或耗材类的产品，物流便宜、试错成本低。去亚马逊Best Sellers和TK热榜看什么在卖，先模仿再超越。",
+    "🌱 <b>新手起步② · 资质和收款先备好</b>：个体户/公司营业执照+进出口经营权（现在备案制，很快），没单时可先挂靠外贸公司出货。收款提前开好：企业账户、PayPal、Wise、连连/PingPong，客户问付款方式时秒回，专业度拉满。",
+    "🌱 <b>新手起步③ · 第一个客户从哪来</b>：零基础起步三件套：①阿里国际站/MIC开免费会员先练手；②Google搜产品词+importer/wholesaler，每天发10封开发信；③FB/INS/TK同步发产品内容。坚持90天，第一单大概率就来了。",
+    "📣 <b>FB投流① · 开户与养号</b>：新BM先用主页发一周自然内容，再绑卡跑互动广告养像素（Page Post Engagement，日预算$5-10）。像素装到独立站并测试事件，没数据的像素等于没投。账号被封多半是素材违规和频繁改设置，前两周动作要慢。",
+    "📣 <b>FB投流② · 测品方法</b>：一套测品公式：1个广告系列→3个受众组（宽泛/兴趣/类目词）→每组2-3个素材，日预算$5/组跑2天。CTR＜1%杀素材，CPC贵过类目均值杀受众，有加购没下单就查落地页价格和运费。留下赢家再放大。",
+    "📣 <b>FB投流③ · 放量与再营销</b>：出单稳定的素材别直接拉大预算，每天+20%稳步放量，或复制到新系列翻预算。再营销必做：网站访客、加购未购、视频看过75%的人单独建组，低预算高ROI，老客池是你最稳的订单来源。",
+    "🎵 <b>TK运营① · 起号与选品</b>：新号前5条视频定人群，垂直发同一类产品场景，别东一条西一条。选品看三点：演示性强（3秒看懂用法）、痛点明显、TikTok Shop同类销量在涨。搬运必死，原创实拍哪怕粗糙，流量也比搬运高。",
+    "🎵 <b>TK运营② · 带货与直播</b>：视频前3秒必须给结果或冲突（脏污对比、开箱瞬间），中段讲用法，结尾挂小黄车。直播固定时段、固定话术循环讲1个爆品，新人直播间先靠短视频引流进人，再谈转化，别坐等自然流量。",
+    "📸 <b>INS获客</b>：主页Bio写清你是做什么+WhatsApp直达链接。每天1条Reels展示产品使用场景，标签混用大标签+精准长尾标签，主动评论同行粉丝是最快的冷启动。客户询盘尽量1小时内回，INS买家同时在问3-5家，谁快谁赢。",
+    "💰 <b>SOHO收款</b>：小额用PayPal/Wise，大额走公司账户TT。警惕高风险地区订单，首单务必全款或至少30-50%定金再备货。报价时把收款手续费算进成本，别订单接了利润没了。",
+    "🔍 <b>找客户渠道</b>：海关数据+Google Maps+LinkedIn组合拳。海关数据找真实进口商，Google Maps按城市扫同类经销商，LinkedIn加采购负责人。再配上Google指令 site: 搜索，每天稳定开发20个精准客户。",
+    "✉️ <b>开发信技巧</b>：标题别写Dear Sir，要写具体产品+利益点，如'Reduce your sourcing cost 15% - LED strips'。正文3段以内，附件只放1页PDF，第一封不报价只求回复。没回的别放弃，第3天、7天各跟一封，回复率能翻倍。",
+    "🚢 <b>报价基础课</b>：报价前先分清FOB（离岸价，不含海运）和CIF（到港价，含海运保险）。新手建议先报EXW/FOB练手，运费让货代实时核价再报，别拍脑袋包邮到港，一柜运费波动能吃掉全部利润。",
+    "🧾 <b>退税常识</b>：有进出口权的公司出口可享退税，不同产品退税率不同（可到税务总局查HS编码对应退税率），这笔钱常常就是你的纯利润。单证（报关单、发票、提单）留全，退税申报别逾期。",
 ]
 
 
@@ -145,15 +189,16 @@ def main():
     tech_items = []
     for name, url in TECH_FEEDS:
         tech_items.extend(fetch_feed(name, url))
+    policy_items = fetch_policy_items()
     trade_items = []
     for name, url in TRADE_FEEDS:
         trade_items.extend(fetch_feed(name, url))
-    if not tech_items and not trade_items:
+    if not tech_items and not trade_items and not policy_items:
         logger.error("所有 RSS 源都抓取失败，今天不推送")
         sys.exit(1)
-    msg = build_message(tech_items, trade_items, pick_tip())
-    logger.info("科技 %d 条，外贸 %d 条+干货，准备推送",
-                len(tech_items), len(trade_items))
+    msg = build_message(tech_items, policy_items, trade_items, pick_tip())
+    logger.info("科技 %d 条，政策 %d 条，外贸 %d 条+干货，准备推送",
+                len(tech_items), len(policy_items), len(trade_items))
     send_to_channel(msg)
 
 
