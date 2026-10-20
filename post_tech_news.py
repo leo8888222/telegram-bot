@@ -109,6 +109,37 @@ def fetch_policy_items() -> list:
     return picked
 
 
+# ---- 去重：已发过的链接记在 sent_links.json 里，下次自动跳过 ----
+HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sent_links.json")
+HISTORY_KEEP = 300  # 只保留最近 300 条，防文件无限变大
+
+
+def load_sent_links() -> set:
+    try:
+        with open(HISTORY_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if isinstance(data, list):
+            return set(data)
+    except Exception:
+        pass
+    return set()
+
+
+def drop_sent(items: list, sent: set) -> list:
+    """过滤掉已经发过的条目（按链接判断）。"""
+    return [it for it in items if it["link"] not in sent]
+
+
+def save_sent_links(sent: set):
+    links = list(sent)[-HISTORY_KEEP:]
+    try:
+        with open(HISTORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(links, f, ensure_ascii=False)
+        logger.info("已发记录更新：共 %d 条", len(links))
+    except Exception as e:
+        logger.warning("保存已发记录失败: %s", e)
+
+
 def build_message(tech_items: list, policy_items: list, trade_items: list, tip: str) -> str:
     date_str = time.strftime("%m月%d日", time.localtime())
     lines = ["📰 <b>每日资讯 · %s</b>" % date_str, ""]
@@ -186,6 +217,7 @@ def send_to_channel(text: str):
 
 
 def main():
+    sent = load_sent_links()
     tech_items = []
     for name, url in TECH_FEEDS:
         tech_items.extend(fetch_feed(name, url))
@@ -193,13 +225,23 @@ def main():
     trade_items = []
     for name, url in TRADE_FEEDS:
         trade_items.extend(fetch_feed(name, url))
-    if not tech_items and not trade_items and not policy_items:
-        logger.error("所有 RSS 源都抓取失败，今天不推送")
-        sys.exit(1)
-    msg = build_message(tech_items, policy_items, trade_items, pick_tip())
-    logger.info("科技 %d 条，政策 %d 条，外贸 %d 条+干货，准备推送",
-                len(tech_items), len(policy_items), len(trade_items))
+    # 去重：发过的全部跳过
+    tech_new = drop_sent(tech_items, sent)
+    policy_new = drop_sent(policy_items, sent)
+    trade_new = drop_sent(trade_items, sent)
+    logger.info("去重：科技 %d→%d，政策 %d→%d，外贸 %d→%d",
+                len(tech_items), len(tech_new),
+                len(policy_items), len(policy_new),
+                len(trade_items), len(trade_new))
+    if not tech_new and not policy_new and not trade_new:
+        logger.info("今天没有新资讯（全是发过的），跳过推送")
+        return
+    msg = build_message(tech_new, policy_new, trade_new, pick_tip())
     send_to_channel(msg)
+    # 发送成功才记入已发列表
+    for it in tech_new + policy_new + trade_new:
+        sent.add(it["link"])
+    save_sent_links(sent)
 
 
 if __name__ == "__main__":
