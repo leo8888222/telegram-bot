@@ -1,1 +1,161 @@
-IyEvdXNyL2Jpbi9lbnYgcHl0aG9uMwojIC0qLSBjb2Rpbmc6IHV0Zi04IC0qLQoiIiIK5q+P5aSp6Ieq5Yqo5b6A44CM5aSW6LS45Lq65a6244CN6aKR6YGT5o6o6YCB56eR5oqAICsg5aSW6LS45paw6Ze744CCCgrnlKjms5XvvIhHaXRIdWIgQWN0aW9ucyDlrprml7bop6blj5HvvInvvJoKICAgIFRFTEVHUkFNX0JPVF9UT0tFTj14eHggQ0hBTk5FTD1AZnJlZW5vZGVzX2RhaWx5IHB5dGhvbjMgcG9zdF90ZWNoX25ld3MucHkKCuaWsOmXu+adpea6kO+8muWFrOW8gCBSU1PvvIjnp5HmioDvvJozNmtyL0lU5LmL5a62L+WwkeaVsOa0vu+8m+Wklui0uO+8mumbqOaenOe9kS/kur/pgqbliqjlipvvvInjgIIK5LuF5L6d6LWWIFB5dGhvbiDmoIflh4blupPjgIIKIiIiCgppbXBvcnQgaHRtbAppbXBvcnQganNvbgppbXBvcnQgbG9nZ2luZwppbXBvcnQgb3MKaW1wb3J0IHN5cwppbXBvcnQgdGltZQppbXBvcnQgdXJsbGliLnJlcXVlc3QKaW1wb3J0IHhtbC5ldHJlZS5FbGVtZW50VHJlZSBhcyBFVAoKbG9nZ2luZy5iYXNpY0NvbmZpZyhsZXZlbD1sb2dnaW5nLklORk8sIGZvcm1hdD0iJShhc2N0aW1lKXMgLSAlKGxldmVsbmFtZSlzIC0gJShtZXNzYWdlKXMiKQpsb2dnZXIgPSBsb2dnaW5nLmdldExvZ2dlcigidGVjaC1uZXdzIikKClRPS0VOID0gb3MuZW52aXJvbi5nZXQoIlRFTEVHUkFNX0JPVF9UT0tFTiIsICIiKQpDSEFOTkVMID0gb3MuZW52aXJvbi5nZXQoIkNIQU5ORUwiLCAiQGZyZWVub2Rlc19kYWlseSIpCmlmIG5vdCBUT0tFTjoKICAgIHN5cy5leGl0KCLnvLrlsJEgVEVMRUdSQU1fQk9UX1RPS0VOIikKCiMgUlNTIOa6kO+8muWQjeensCAtPiDlnLDlnYAKVEVDSF9GRUVEUyA9IFsKICAgICgiMzbmsKrlv6vorq8iLCAiaHR0cHM6Ly93d3cuMzZrci5jb20vZmVlZCIpLAogICAgKCJJVOS5i+WutiIsICJodHRwczovL3d3dy5pdGhvbWUuY29tL3Jzcy8iKSwKICAgICgi5bCR5pWw5rS+IiwgImh0dHBzOi8vc3NwYWkuY29tL2ZlZWQiKSwKXQoKIyDlpJbotLjotYTorq/mupDvvIhXVE8g5a6Y5pa577yM6Iux5paH5L2G5pyA5p2D5aiB77yJClRSQURFX0ZFRURTID0gWwogICAgKCJXVE8iLCAiaHR0cDovL3d3dy53dG8ub3JnL2xpYnJhcnkvcnNzL2xhdGVzdF9uZXdzX2UueG1sIiksCl0KCk1BWF9JVEVNU19QRVJfU0VDVElPTiA9IDUKSFRUUF9USU1FT1VUID0gMjAKVUEgPSB7IlVzZXItQWdlbnQiOiAiTW96aWxsYS81LjAgKFgxMTsgTGludXggeDg2XzY0KSBBcHBsZVdlYktpdC81MzcuMzYifQoKCmRlZiBodHRwX2dldCh1cmw6IHN0cikgLT4gYnl0ZXM6CiAgICByZXEgPSB1cmxsaWIucmVxdWVzdC5SZXF1ZXN0KHVybCwgaGVhZGVycz1VQSkKICAgIHdpdGggdXJsbGliLnJlcXVlc3QudXJsb3BlbihyZXEsIHRpbWVvdXQ9SFRUUF9USU1FT1VUKSBhcyByZXNwOgogICAgICAgIHJldHVybiByZXNwLnJlYWQoKQoKCmRlZiBmZXRjaF9mZWVkKG5hbWU6IHN0ciwgdXJsOiBzdHIpIC0+IGxpc3Q6CiAgICAiIiLmipPkuIDkuKogUlNT77yM6L+U5ZueIFt7dGl0bGUsIGxpbmssIHNyY31d44CCIiIiCiAgICBpdGVtcyA9IFtdCiAgICB0cnk6CiAgICAgICAgZGF0YSA9IGh0dHBfZ2V0KHVybCkKICAgICAgICByb290ID0gRVQuZnJvbXN0cmluZyhkYXRhKQogICAgICAgIGZvciBlbnRyeSBpbiByb290Lml0ZXIoIml0ZW0iKTogICMgcnNzMi4wCiAgICAgICAgICAgIHRpdGxlID0gKGVudHJ5LmZpbmR0ZXh0KCJ0aXRsZSIpIG9yICIiKS5zdHJpcCgpCiAgICAgICAgICAgIGxpbmsgPSAoZW50cnkuZmluZHRleHQoImxpbmsiKSBvciAiIikuc3RyaXAoKQogICAgICAgICAgICBpZiB0aXRsZSBhbmQgbGluazoKICAgICAgICAgICAgICAgIGl0ZW1zLmFwcGVuZCh7InRpdGxlIjogdGl0bGUsICJsaW5rIjogbGluaywgInNyYyI6IG5hbWV9KQogICAgICAgICAgICBpZiBsZW4oaXRlbXMpID49IDQ6CiAgICAgICAgICAgICAgICBicmVhawogICAgICAgIGlmIG5vdCBpdGVtczogICMgYXRvbQogICAgICAgICAgICBucyA9ICJ7aHR0cDovL3d3dy53My5vcmcvMjAwNS9BdG9tfSIKICAgICAgICAgICAgZm9yIGVudHJ5IGluIHJvb3QuaXRlcihucyArICJlbnRyeSIpOgogICAgICAgICAgICAgICAgdCA9IGVudHJ5LmZpbmQobnMgKyAidGl0bGUiKQogICAgICAgICAgICAgICAgbCA9IGVudHJ5LmZpbmQobnMgKyAibGluayIpCiAgICAgICAgICAgICAgICB0aXRsZSA9ICh0LnRleHQgaWYgdCBpcyBub3QgTm9uZSBhbmQgdC50ZXh0IGVsc2UgIiIpLnN0cmlwKCkKICAgICAgICAgICAgICAgIGxpbmsgPSBsLmdldCgiaHJlZiIsICIiKSBpZiBsIGlzIG5vdCBOb25lIGVsc2UgIiIKICAgICAgICAgICAgICAgIGlmIHRpdGxlIGFuZCBsaW5rOgogICAgICAgICAgICAgICAgICAgIGl0ZW1zLmFwcGVuZCh7InRpdGxlIjogdGl0bGUsICJsaW5rIjogbGluaywgInNyYyI6IG5hbWV9KQogICAgICAgICAgICAgICAgaWYgbGVuKGl0ZW1zKSA+PSA0OgogICAgICAgICAgICAgICAgICAgIGJyZWFrCiAgICBleGNlcHQgRXhjZXB0aW9uIGFzIGU6CiAgICAgICAgbG9nZ2VyLndhcm5pbmcoIlJTUyDmipPlj5blpLHotKUgJXMgKCVzKTogJXMiLCBuYW1lLCB1cmwsIGUpCiAgICByZXR1cm4gaXRlbXMKCgpkZWYgYnVpbGRfbWVzc2FnZSh0ZWNoX2l0ZW1zOiBsaXN0LCB0cmFkZV9pdGVtczogbGlzdCwgdGlwOiBzdHIpIC0+IHN0cjoKICAgIGRhdGVfc3RyID0gdGltZS5zdHJmdGltZSgiJW3mnIglZOaXpSIsIHRpbWUubG9jYWx0aW1lKCkpCiAgICBsaW5lcyA9IFsi8J+TsCA8Yj7mr4/ml6XotYTorq8gwrcgJXM8L2I+IiAlIGRhdGVfc3RyLCAiIl0KICAgIGlmIHRlY2hfaXRlbXM6CiAgICAgICAgbGluZXMuYXBwZW5kKCLwn5SsIDxiPuenkeaKgDwvYj4iKQogICAgICAgIGZvciBpLCBpdCBpbiBlbnVtZXJhdGUodGVjaF9pdGVtc1s6TUFYX0lURU1TX1BFUl9TRUNUSU9OXSwgMSk6CiAgICAgICAgICAgIHRpdGxlID0gaHRtbC5lc2NhcGUoaXRbInRpdGxlIl1bOjYwXSkKICAgICAgICAgICAgc3JjID0gaHRtbC5lc2NhcGUoaXRbInNyYyJdKQogICAgICAgICAgICBsaW5lcy5hcHBlbmQoJyVkLiA8YSBocmVmPSIlcyI+JXM8L2E+IDxpPiglcyk8L2k+JyAlIChpLCBpdFsibGluayJdLCB0aXRsZSwgc3JjKSkKICAgICAgICBsaW5lcy5hcHBlbmQoIiIpCiAgICBpZiB0cmFkZV9pdGVtczoKICAgICAgICBsaW5lcy5hcHBlbmQoIvCfjI0gPGI+5aSW6LS4PC9iPiIpCiAgICAgICAgZm9yIGksIGl0IGluIGVudW1lcmF0ZSh0cmFkZV9pdGVtc1s6TUFYX0lURU1TX1BFUl9TRUNUSU9OXSwgMSk6CiAgICAgICAgICAgIHRpdGxlID0gaHRtbC5lc2NhcGUoaXRbInRpdGxlIl1bOjYwXSkKICAgICAgICAgICAgc3JjID0gaHRtbC5lc2NhcGUoaXRbInNyYyJdKQogICAgICAgICAgICBsaW5lcy5hcHBlbmQoJyVkLiA8YSBocmVmPSIlcyI+JXM8L2E+IDxpPiglcyk8L2k+JyAlIChpLCBpdFsibGluayJdLCB0aXRsZSwgc3JjKSkKICAgICAgICBsaW5lcy5hcHBlbmQoIiIpCiAgICBpZiB0aXA6CiAgICAgICAgbGluZXMuYXBwZW5kKCLwn5KhIDxiPuS7iuaXpeW5sui0pzwvYj4iKQogICAgICAgIGxpbmVzLmFwcGVuZCh0aXApCiAgICAgICAgbGluZXMuYXBwZW5kKCIiKQogICAgbGluZXMuYXBwZW5kKCLigJTigJQg5aSW6LS45Lq65a62IMK3IOavj+aXpeabtOaWsCIpCiAgICByZXR1cm4gIlxuIi5qb2luKGxpbmVzKQoKCiMg5q+P5pel6L2u5o2i55qE5aSW6LS45bmy6LSn77yIU09ITyAvIEZC5oqV5rWBIC8gSU5TIC8gVEvojrflrqLvvIkKREFJTFlfVElQUyA9IFsKICAgICLwn4+gIDxiPlNPSE/lgZrlpJbotLjotbfmraU8L2I+77ya5YWI5a6aMS0y5Liq5Li75omT5Lqn5ZOB5rex6ICV77yM5Yir6LSq5aSa44CC5rOo5YaM6aaZ5riv5YWs5Y+4K+emu+WyuOi0puaIt+aUtuasvu+8jOeUqFdoYXRzQXBwIEJ1c2luZXNz5YW75Y+377yM5YmNM+S4quaciOavj+WkqeWKoDEw5Liq57K+5YeG5a6i5oi377yM5Z2a5oyB5q+U5oqA5ben6YeN6KaB44CCIiwKICAgICLwn5OjIDxiPkZC5oqV5rWB5YWl6ZeoPC9iPu+8muaWsOaIt+WFiOi3keS6kuWKqOW5v+WRiuWFu+WDj+e0oDflpKnvvIzml6XpooTnrpckNei1t+a1i+e0oOadkOOAgkNUUuS9juS6jjEl55u05o6l5o2i57Sg5p2Q77yM5Yir5q2756OV44CC5Y+X5LyX5YWI5a695ZCO56qE77yM6L2s5YyW56iz5a6a5ZCO5YaN5Y+g5Yqg5YW06Laj6K+N44CCIiwKICAgICLwn5O4IDxiPklOU+iOt+WuojwvYj7vvJrkuLvpobVCaW/lhpnmuIXkvaDmmK/lgZrku4DkuYgrV2hhdHNBcHDnm7Tovr7pk77mjqXjgILmr4/lpKkx5p2hUmVlbHPlsZXnpLrkuqflk4Hkvb/nlKjlnLrmma/vvIzmoIfnrb7mt7fnlKjlpKfmoIfnrb4r57K+5YeG6ZW/5bC+5qCH562+77yM5Li75Yqo6K+E6K665ZCM6KGM57KJ5Lid5piv5pyA5b+r55qE5Ya35ZCv5Yqo44CCIiwKICAgICLwn461IDxiPlRL6I635a6iPC9iPu+8mlRpa1RvayBTaG9wK+efreinhumikeWPjOeuoem9kOS4i+OAguWJjTPnp5Llv4Xpobvlh7rkuqflk4HljZbngrnvvIzmjILlsI/pu4TovabovazljJbjgILnm7Tmkq3mr4/lpKnlm7rlrprml7bmrrXlvIDvvIzlk6rmgJXlj6rmnInlh6DkuKrkurrkuZ/opoHlnZrmjIHvvIznrpfms5Xnu5nlnZrmjIHnmoTkurrmtYHph4/jgIIiLAogICAgIvCfkrAgPGI+U09IT+aUtuasvjwvYj7vvJrlsI/pop3nlKhQYXlQYWwvV2lzZe+8jOWkp+minei1sOemu+WyuOWFrOWPuFRU44CC6K2m5oOV5bC85pel5Yip5Lqa562J6auY6aOO6Zmp5Zyw5Yy66K6i5Y2V77yM6aaW5Y2V5Yqh5b+F5YWo5qy+5oiW6Iez5bCRNTAl5a6a6YeR5Y+R6LSn44CCIiwKICAgICLwn5SNIDxiPuaJvuWuouaIt+a4oOmBkzwvYj7vvJrmtbflhbPmlbDmja4rR29vZ2xlIE1hcHMrTGlua2VkSW7nu4TlkIjmi7PjgILmtbflhbPmlbDmja7mib7ov5vlj6PllYbvvIxHb29nbGUgTWFwc+aMieWMuuWfn+aJq+ihl+W8j+W8gOWPke+8jExpbmtlZElu5Yqg6YeH6LSt6LSf6LSj5Lq677yM5LiJ566h6b2Q5LiL5LiN5oSB5rKh5a6i5oi344CCIiwKICAgICLinInvuI8gPGI+5byA5Y+R5L+h5oqA5benPC9iPu+8muagh+mimOWIq+WGmURlYXIgU2ly77yM6KaB5YaZ5YW35L2T5Lqn5ZOBK+WIqeebiueCueWmgidSZWR1Y2UgeW91ciBzb3VyY2luZyBjb3N0IDE1JSAtIExFRCBzdHJpcHMn44CC5q2j5paHM+auteS7peWGhe+8jOmZhOS7tuWPquaUvjHpobVQREbvvIznrKzkuIDlsIHkuI3miqXku7flj6rmsYLlm57lpI3jgIIiLApdCgoKZGVmIHBpY2tfdGlwKCkgLT4gc3RyOgogICAgIyDmjInml6XmnJ/ova7mjaLvvIzkv53or4Hmr4/lpKnkuIDmnaHkuI3ph43moLcKICAgIGlkeCA9IGludCh0aW1lLnN0cmZ0aW1lKCIlaiIsIHRpbWUubG9jYWx0aW1lKCkpKSAlIGxlbihEQUlMWV9USVBTKQogICAgcmV0dXJuIERBSUxZX1RJUFNbaWR4XQoKCmRlZiBzZW5kX3RvX2NoYW5uZWwodGV4dDogc3RyKToKICAgIHVybCA9ICJodHRwczovL2FwaS50ZWxlZ3JhbS5vcmcvYm90JXMvc2VuZE1lc3NhZ2UiICUgVE9LRU4KICAgIHBheWxvYWQgPSBqc29uLmR1bXBzKHsKICAgICAgICAiY2hhdF9pZCI6IENIQU5ORUwsCiAgICAgICAgInRleHQiOiB0ZXh0LAogICAgICAgICJwYXJzZV9tb2RlIjogIkhUTUwiLAogICAgICAgICJkaXNhYmxlX3dlYl9wYWdlX3ByZXZpZXciOiBGYWxzZSwKICAgIH0pLmVuY29kZSgidXRmLTgiKQogICAgcmVxID0gdXJsbGliLnJlcXVlc3QuUmVxdWVzdCgKICAgICAgICB1cmwsIGRhdGE9cGF5bG9hZCwKICAgICAgICBoZWFkZXJzPXsiQ29udGVudC1UeXBlIjogImFwcGxpY2F0aW9uL2pzb24iLCAiVXNlci1BZ2VudCI6IFVBWyJVc2VyLUFnZW50Il19LAogICAgKQogICAgd2l0aCB1cmxsaWIucmVxdWVzdC51cmxvcGVuKHJlcSwgdGltZW91dD1IVFRQX1RJTUVPVVQpIGFzIHJlc3A6CiAgICAgICAgZGF0YSA9IGpzb24ubG9hZHMocmVzcC5yZWFkKCkuZGVjb2RlKCJ1dGYtOCIpKQogICAgaWYgbm90IGRhdGEuZ2V0KCJvayIpOgogICAgICAgIHJhaXNlIFJ1bnRpbWVFcnJvcigiVGVsZWdyYW0gQVBJIOi/lOWbnuWksei0pTogJXMiICUgZGF0YSkKICAgIGxvZ2dlci5pbmZvKCLlt7LmjqjpgIHliLAgJXMiLCBDSEFOTkVMKQoKCmRlZiBtYWluKCk6CiAgICB0ZWNoX2l0ZW1zID0gW10KICAgIGZvciBuYW1lLCB1cmwgaW4gVEVDSF9GRUVEUzoKICAgICAgICB0ZWNoX2l0ZW1zLmV4dGVuZChmZXRjaF9mZWVkKG5hbWUsIHVybCkpCiAgICB0cmFkZV9pdGVtcyA9IFtdCiAgICBmb3IgbmFtZSwgdXJsIGluIFRSQURFX0ZFRURTOgogICAgICAgIHRyYWRlX2l0ZW1zLmV4dGVuZChmZXRjaF9mZWVkKG5hbWUsIHVybCkpCiAgICBpZiBub3QgdGVjaF9pdGVtcyBhbmQgbm90IHRyYWRlX2l0ZW1zOgogICAgICAgIGxvZ2dlci5lcnJvcigi5omA5pyJIFJTUyDmupDpg73mipPlj5blpLHotKXvvIzku4rlpKnkuI3mjqjpgIEiKQogICAgICAgIHN5cy5leGl0KDEpCiAgICBtc2cgPSBidWlsZF9tZXNzYWdlKHRlY2hfaXRlbXMsIHRyYWRlX2l0ZW1zLCBwaWNrX3RpcCgpKQogICAgbG9nZ2VyLmluZm8oIuenkeaKgCAlZCDmnaHvvIzlpJbotLggJWQg5p2hK+W5sui0p++8jOWHhuWkh+aOqOmAgSIsCiAgICAgICAgICAgICAgICBsZW4odGVjaF9pdGVtcyksIGxlbih0cmFkZV9pdGVtcykpCiAgICBzZW5kX3RvX2NoYW5uZWwobXNnKQoKCmlmIF9fbmFtZV9fID09ICJfX21haW5fXyI6CiAgICBtYWluKCkK
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+每天自动往「外贸人家」频道推送科技 + 外贸新闻。
+
+用法（GitHub Actions 定时触发）：
+    TELEGRAM_BOT_TOKEN=xxx CHANNEL=@freenodes_daily python3 post_tech_news.py
+
+新闻来源：公开 RSS（科技：36kr/IT之家/少数派；外贸：雨果网/亿邦动力）。
+仅依赖 Python 标准库。
+"""
+
+import html
+import json
+import logging
+import os
+import sys
+import time
+import urllib.request
+import xml.etree.ElementTree as ET
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logger = logging.getLogger("tech-news")
+
+TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+CHANNEL = os.environ.get("CHANNEL", "@freenodes_daily")
+if not TOKEN:
+    sys.exit("缺少 TELEGRAM_BOT_TOKEN")
+
+# RSS 源：名称 -> 地址
+TECH_FEEDS = [
+    ("36氪快讯", "https://www.36kr.com/feed"),
+    ("IT之家", "https://www.ithome.com/rss/"),
+    ("少数派", "https://sspai.com/feed"),
+]
+
+# 外贸资讯源（WTO 官方，英文但最权威）
+TRADE_FEEDS = [
+    ("WTO", "http://www.wto.org/library/rss/latest_news_e.xml"),
+]
+
+MAX_ITEMS_PER_SECTION = 5
+HTTP_TIMEOUT = 20
+UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"}
+
+
+def http_get(url: str) -> bytes:
+    req = urllib.request.Request(url, headers=UA)
+    with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
+        return resp.read()
+
+
+def fetch_feed(name: str, url: str) -> list:
+    """抓一个 RSS，返回 [{title, link, src}]。"""
+    items = []
+    try:
+        data = http_get(url)
+        root = ET.fromstring(data)
+        for entry in root.iter("item"):  # rss2.0
+            title = (entry.findtext("title") or "").strip()
+            link = (entry.findtext("link") or "").strip()
+            if title and link:
+                items.append({"title": title, "link": link, "src": name})
+            if len(items) >= 4:
+                break
+        if not items:  # atom
+            ns = "{http://www.w3.org/2005/Atom}"
+            for entry in root.iter(ns + "entry"):
+                t = entry.find(ns + "title")
+                l = entry.find(ns + "link")
+                title = (t.text if t is not None and t.text else "").strip()
+                link = l.get("href", "") if l is not None else ""
+                if title and link:
+                    items.append({"title": title, "link": link, "src": name})
+                if len(items) >= 4:
+                    break
+    except Exception as e:
+        logger.warning("RSS 抓取失败 %s (%s): %s", name, url, e)
+    return items
+
+
+def build_message(tech_items: list, trade_items: list, tip: str) -> str:
+    date_str = time.strftime("%m月%d日", time.localtime())
+    lines = ["📰 <b>每日资讯 · %s</b>" % date_str, ""]
+    if tech_items:
+        lines.append("🔬 <b>科技</b>")
+        for i, it in enumerate(tech_items[:MAX_ITEMS_PER_SECTION], 1):
+            title = html.escape(it["title"][:60])
+            src = html.escape(it["src"])
+            lines.append('%d. <a href="%s">%s</a> <i>(%s)</i>' % (i, it["link"], title, src))
+        lines.append("")
+    if trade_items:
+        lines.append("🌍 <b>外贸</b>")
+        for i, it in enumerate(trade_items[:MAX_ITEMS_PER_SECTION], 1):
+            title = html.escape(it["title"][:60])
+            src = html.escape(it["src"])
+            lines.append('%d. <a href="%s">%s</a> <i>(%s)</i>' % (i, it["link"], title, src))
+        lines.append("")
+    if tip:
+        lines.append("💡 <b>今日干货</b>")
+        lines.append(tip)
+        lines.append("")
+    lines.append("—— 外贸人家 · 每日更新")
+    return "\n".join(lines)
+
+
+# 每日轮换的外贸干货（SOHO / FB投流 / INS / TK获客）
+DAILY_TIPS = [
+    "🏠 <b>SOHO做外贸起步</b>：先定1-2个主打产品深耕，别贪多。注册香港公司+离岸账户收款，用WhatsApp Business养号，前3个月每天加10个精准客户，坚持比技巧重要。",
+    "📣 <b>FB投流入门</b>：新户先跑互动广告养像素7天，日预算$5起测素材。CTR低于1%直接换素材，别死磕。受众先宽后窄，转化稳定后再叠加兴趣词。",
+    "📸 <b>INS获客</b>：主页Bio写清你是做什么+WhatsApp直达链接。每天1条Reels展示产品使用场景，标签混用大标签+精准长尾标签，主动评论同行粉丝是最快的冷启动。",
+    "🎵 <b>TK获客</b>：TikTok Shop+短视频双管齐下。前3秒必须出产品卖点，挂小黄车转化。直播每天固定时段开，哪怕只有几个人也要坚持，算法给坚持的人流量。",
+    "💰 <b>SOHO收款</b>：小额用PayPal/Wise，大额走离岸公司TT。警惕尼日利亚等高风险地区订单，首单务必全款或至少50%定金发货。",
+    "🔍 <b>找客户渠道</b>：海关数据+Google Maps+LinkedIn组合拳。海关数据找进口商，Google Maps按区域扫街式开发，LinkedIn加采购负责人，三管齐下不愁没客户。",
+    "✉️ <b>开发信技巧</b>：标题别写Dear Sir，要写具体产品+利益点如'Reduce your sourcing cost 15% - LED strips'。正文3段以内，附件只放1页PDF，第一封不报价只求回复。",
+]
+
+
+def pick_tip() -> str:
+    # 按日期轮换，保证每天一条不重样
+    idx = int(time.strftime("%j", time.localtime())) % len(DAILY_TIPS)
+    return DAILY_TIPS[idx]
+
+
+def send_to_channel(text: str):
+    url = "https://api.telegram.org/bot%s/sendMessage" % TOKEN
+    payload = json.dumps({
+        "chat_id": CHANNEL,
+        "text": text,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": False,
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        url, data=payload,
+        headers={"Content-Type": "application/json", "User-Agent": UA["User-Agent"]},
+    )
+    with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    if not data.get("ok"):
+        raise RuntimeError("Telegram API 返回失败: %s" % data)
+    logger.info("已推送到 %s", CHANNEL)
+
+
+def main():
+    tech_items = []
+    for name, url in TECH_FEEDS:
+        tech_items.extend(fetch_feed(name, url))
+    trade_items = []
+    for name, url in TRADE_FEEDS:
+        trade_items.extend(fetch_feed(name, url))
+    if not tech_items and not trade_items:
+        logger.error("所有 RSS 源都抓取失败，今天不推送")
+        sys.exit(1)
+    msg = build_message(tech_items, trade_items, pick_tip())
+    logger.info("科技 %d 条，外贸 %d 条+干货，准备推送",
+                len(tech_items), len(trade_items))
+    send_to_channel(msg)
+
+
+if __name__ == "__main__":
+    main()
